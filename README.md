@@ -46,6 +46,11 @@ You can stop supervisord:
 $ (cd test && make stop)
 ```
 
+### Why do you not run integration tests on travis-ci?
+
+According to LICENSE.txt in DynamoDB local distribution, AWS grants us a license to run DynamoDB local on the machine owned or controlled by us.
+we can't use DynamoDB local on travis-ci since travis-ci runs by third party.
+
 ## real DynamoDB server on us-east
 
 _WARNING_: Some dangerous operations such as `DeleteTable` will be performed during the tests. Please be careful.
