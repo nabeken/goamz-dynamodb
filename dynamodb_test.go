@@ -19,15 +19,15 @@ var dynamodb_region aws.Region
 var dynamodb_auth aws.Auth
 
 type DynamoDBTest struct {
-	server            *dynamodb.Server
-	aws.Region        // Exports Region
-	TableDescriptionT dynamodb.TableDescriptionT
-	table             *dynamodb.Table
+	server           *dynamodb.Server
+	aws.Region       // Exports Region
+	TableDescription dynamodb.TableDescription
+	table            *dynamodb.Table
 }
 
 // Delete all items in the table
 func (s *DynamoDBTest) TearDownTest(c *check.C) {
-	pk, err := s.TableDescriptionT.BuildPrimaryKey()
+	pk, err := s.TableDescription.BuildPrimaryKey()
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -59,13 +59,13 @@ func (s *DynamoDBTest) TearDownSuite(c *check.C) {
 	if tables, err := s.server.ListTables(); err != nil {
 		c.Fatal(err)
 	} else {
-		if !findTableByName(tables, s.TableDescriptionT.TableName) {
+		if !findTableByName(tables, s.TableDescription.TableName) {
 			return
 		}
 	}
 
 	// Delete the table and wait
-	if _, err := s.server.DeleteTable(s.TableDescriptionT); err != nil {
+	if _, err := s.server.DeleteTable(s.TableDescription); err != nil {
 		c.Fatal(err)
 	}
 
@@ -81,7 +81,7 @@ func (s *DynamoDBTest) TearDownSuite(c *check.C) {
 				if err != nil {
 					c.Fatal(err)
 				}
-				if findTableByName(tables, s.TableDescriptionT.TableName) {
+				if findTableByName(tables, s.TableDescription.TableName) {
 					time.Sleep(5 * time.Second)
 				} else {
 					done <- true

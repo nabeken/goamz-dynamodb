@@ -12,180 +12,15 @@ type Table struct {
 	Key    PrimaryKey
 }
 
-type AttributeDefinitionT struct {
-	Name string `json:"AttributeName"`
-	Type string `json:"AttributeType"`
-}
-
-type KeySchemaT struct {
-	AttributeName string
-	KeyType       string
-}
-
-type ProjectionT struct {
-	ProjectionType   string
-	NonKeyAttributes []string
-}
-
-type GlobalSecondaryIndexT struct {
-	IndexName             string
-	IndexSizeBytes        int64
-	ItemCount             int64
-	KeySchema             []KeySchemaT
-	Projection            ProjectionT
-	ProvisionedThroughput ProvisionedThroughputT
-}
-
-type LocalSecondaryIndexT struct {
-	IndexName      string
-	IndexSizeBytes int64
-	ItemCount      int64
-	KeySchema      []KeySchemaT
-	Projection     ProjectionT
-}
-
-type ProvisionedThroughputT struct {
-	NumberOfDecreasesToday int64
-	ReadCapacityUnits      int64
-	WriteCapacityUnits     int64
-}
-
-type TableDescriptionT struct {
-	AttributeDefinitions   []AttributeDefinitionT
-	CreationDateTime       float64
-	ItemCount              int64
-	KeySchema              []KeySchemaT
-	LocalSecondaryIndexes  []LocalSecondaryIndexT
-	GlobalSecondaryIndexes []GlobalSecondaryIndexT
-	ProvisionedThroughput  ProvisionedThroughputT
-	TableName              string
-	TableSizeBytes         int64
-	TableStatus            string
-}
-
 type describeTableResponse struct {
-	Table TableDescriptionT
+	Table TableDescription
 }
 
-func findAttributeDefinitionByName(ads []AttributeDefinitionT, name string) *AttributeDefinitionT {
-	for _, a := range ads {
-		if a.Name == name {
-			return &a
-		}
-	}
-	return nil
-}
-
-func (a *AttributeDefinitionT) GetEmptyAttribute() *Attribute {
-	switch a.Type {
-	case "S":
-		return NewStringAttribute(a.Name, "")
-	case "N":
-		return NewNumericAttribute(a.Name, "")
-	case "B":
-		return NewBinaryAttribute(a.Name, "")
-	default:
-		return nil
-	}
-}
-
-func (t *TableDescriptionT) BuildPrimaryKey() (pk PrimaryKey, err error) {
-	for _, k := range t.KeySchema {
-		var attr *Attribute
-		ad := findAttributeDefinitionByName(t.AttributeDefinitions, k.AttributeName)
-		if ad == nil {
-			return pk, ErrInconsistencyInTableDescriptionT
-		}
-		attr = ad.GetEmptyAttribute()
-		if attr == nil {
-			return pk, ErrInconsistencyInTableDescriptionT
-		}
-
-		switch k.KeyType {
-		case "HASH":
-			pk.KeyAttribute = attr
-		case "RANGE":
-			pk.RangeAttribute = attr
-		}
-	}
-	return
-}
-
-func (s *Server) NewTable(name string, key PrimaryKey) *Table {
-	return &Table{s, name, key}
-}
-
-func (s *Server) ListTables() ([]string, error) {
-	var tables []string
-
-	query := NewEmptyQuery()
-
-	jsonResponse, err := s.queryServer(target("ListTables"), query)
-
-	if err != nil {
-		return nil, err
-	}
-
-	json, err := simplejson.NewJson(jsonResponse)
-
-	if err != nil {
-		return nil, err
-	}
-
-	response, err := json.Get("TableNames").Array()
-
-	if err != nil {
-		return nil, &UnexpectedResponseError{jsonResponse}
-	}
-
-	for _, value := range response {
-		if t, ok := (value).(string); ok {
-			tables = append(tables, t)
-		}
-	}
-
-	return tables, nil
-}
-
-func (s *Server) CreateTable(tableDescription TableDescriptionT) (string, error) {
-	query := NewEmptyQuery()
-	query.AddCreateRequestTable(tableDescription)
-
-	jsonResponse, err := s.queryServer(target("CreateTable"), query)
-	if err != nil {
-		return "", err
-	}
-
-	json, err := simplejson.NewJson(jsonResponse)
-	if err != nil {
-		return "", err
-	}
-
-	return json.Get("TableDescription").Get("TableStatus").MustString(), nil
-}
-
-func (s *Server) DeleteTable(tableDescription TableDescriptionT) (string, error) {
-	query := NewEmptyQuery()
-	query.AddDeleteRequestTable(tableDescription)
-
-	jsonResponse, err := s.queryServer(target("DeleteTable"), query)
-	if err != nil {
-		return "", err
-	}
-
-	json, err := simplejson.NewJson(jsonResponse)
-	if err != nil {
-		return "", err
-	}
-
-	return json.Get("TableDescription").Get("TableStatus").MustString(), nil
-}
-
-func (t *Table) DescribeTable() (*TableDescriptionT, error) {
+func (t *Table) DescribeTable() (*TableDescription, error) {
 	return t.Server.DescribeTable(t.Name)
 }
 
-func (s *Server) DescribeTable(name string) (*TableDescriptionT, error) {
+func (s *Server) DescribeTable(name string) (*TableDescription, error) {
 	q := NewEmptyQuery()
 	q.addTableByName(name)
 
@@ -201,4 +36,205 @@ func (s *Server) DescribeTable(name string) (*TableDescriptionT, error) {
 	}
 
 	return &r.Table, nil
+}
+
+func (t *Table) Query(attributeComparisons []AttributeComparison) ([]map[string]*Attribute, error) {
+	q := NewQuery(t)
+	q.AddKeyConditions(attributeComparisons)
+	return runQuery(q, t)
+}
+
+func (t *Table) QueryOnIndex(attributeComparisons []AttributeComparison, indexName string) ([]map[string]*Attribute, error) {
+	q := NewQuery(t)
+	q.AddKeyConditions(attributeComparisons)
+	q.AddIndex(indexName)
+	return runQuery(q, t)
+}
+
+func (t *Table) LimitedQuery(attributeComparisons []AttributeComparison, limit int64) ([]map[string]*Attribute, error) {
+	q := NewQuery(t)
+	q.AddKeyConditions(attributeComparisons)
+	q.AddLimit(limit)
+	return runQuery(q, t)
+}
+
+func (t *Table) LimitedQueryOnIndex(attributeComparisons []AttributeComparison, indexName string, limit int64) ([]map[string]*Attribute, error) {
+	q := NewQuery(t)
+	q.AddKeyConditions(attributeComparisons)
+	q.AddIndex(indexName)
+	q.AddLimit(limit)
+	return runQuery(q, t)
+}
+
+func (t *Table) CountQuery(attributeComparisons []AttributeComparison) (int64, error) {
+	q := NewQuery(t)
+	q.AddKeyConditions(attributeComparisons)
+	q.AddSelect("COUNT")
+	jsonResponse, err := t.Server.queryServer(target("Query"), q)
+	if err != nil {
+		return 0, err
+	}
+	json, err := simplejson.NewJson(jsonResponse)
+	if err != nil {
+		return 0, err
+	}
+
+	itemCount, err := json.Get("Count").Int64()
+	if err != nil {
+		return 0, err
+	}
+
+	return itemCount, nil
+}
+
+func runQuery(q *Query, t *Table) ([]map[string]*Attribute, error) {
+	jsonResponse, err := t.Server.queryServer(target("Query"), q)
+	if err != nil {
+		return nil, err
+	}
+
+	json, err := simplejson.NewJson(jsonResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	itemCount, err := json.Get("Count").Int()
+	if err != nil {
+		return nil, &UnexpectedResponseError{jsonResponse}
+	}
+
+	results := make([]map[string]*Attribute, itemCount)
+
+	for i, _ := range results {
+		item, err := json.Get("Items").GetIndex(i).Map()
+		if err != nil {
+			return nil, &UnexpectedResponseError{jsonResponse}
+		}
+		results[i] = parseAttributes(item)
+	}
+	return results, nil
+}
+
+func (t *Table) FetchPartialResults(query *Query) ([]map[string]*Attribute, *Key, error) {
+	jsonResponse, err := t.Server.queryServer(target("Scan"), query)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	json, err := simplejson.NewJson(jsonResponse)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	itemCount, err := json.Get("Count").Int()
+	if err != nil {
+		return nil, nil, &UnexpectedResponseError{jsonResponse}
+	}
+
+	results := make([]map[string]*Attribute, itemCount)
+	for i, _ := range results {
+		item, err := json.Get("Items").GetIndex(i).Map()
+		if err != nil {
+			return nil, nil, &UnexpectedResponseError{jsonResponse}
+		}
+		results[i] = parseAttributes(item)
+	}
+
+	var lastEvaluatedKey *Key
+	if lastKeyMap := json.Get("LastEvaluatedKey").MustMap(); lastKeyMap != nil {
+		lastEvaluatedKey = parseKey(t, lastKeyMap)
+	}
+
+	return results, lastEvaluatedKey, nil
+}
+
+func (t *Table) ScanPartial(attributeComparisons []AttributeComparison, exclusiveStartKey *Key) ([]map[string]*Attribute, *Key, error) {
+	return t.ParallelScanPartialLimit(attributeComparisons, exclusiveStartKey, 0, 0, 0)
+}
+
+func (t *Table) ScanPartialLimit(attributeComparisons []AttributeComparison, exclusiveStartKey *Key, limit int64) ([]map[string]*Attribute, *Key, error) {
+	return t.ParallelScanPartialLimit(attributeComparisons, exclusiveStartKey, 0, 0, limit)
+}
+
+func (t *Table) ParallelScanPartial(attributeComparisons []AttributeComparison, exclusiveStartKey *Key, segment, totalSegments int) ([]map[string]*Attribute, *Key, error) {
+	return t.ParallelScanPartialLimit(attributeComparisons, exclusiveStartKey, segment, totalSegments, 0)
+}
+
+func (t *Table) ParallelScanPartialLimit(attributeComparisons []AttributeComparison, exclusiveStartKey *Key, segment, totalSegments int, limit int64) ([]map[string]*Attribute, *Key, error) {
+	q := NewQuery(t)
+	q.AddScanFilter(attributeComparisons)
+	if exclusiveStartKey != nil {
+		q.AddExclusiveStartKey(t, exclusiveStartKey)
+	}
+	if totalSegments > 0 {
+		q.AddParallelScanConfiguration(segment, totalSegments)
+	}
+	if limit > 0 {
+		q.AddLimit(limit)
+	}
+	return t.FetchPartialResults(q)
+}
+
+func (t *Table) FetchResults(query *Query) ([]map[string]*Attribute, error) {
+	results, _, err := t.FetchPartialResults(query)
+	return results, err
+}
+
+func (t *Table) Scan(attributeComparisons []AttributeComparison) ([]map[string]*Attribute, error) {
+	q := NewQuery(t)
+	q.AddScanFilter(attributeComparisons)
+	return t.FetchResults(q)
+}
+
+func (t *Table) ParallelScan(attributeComparisons []AttributeComparison, segment int, totalSegments int) ([]map[string]*Attribute, error) {
+	q := NewQuery(t)
+	q.AddScanFilter(attributeComparisons)
+	q.AddParallelScanConfiguration(segment, totalSegments)
+	return t.FetchResults(q)
+}
+
+func parseKey(t *Table, s map[string]interface{}) *Key {
+	k := &Key{}
+
+	hk := t.Key.KeyAttribute
+	if v, ok := s[hk.Name].(map[string]interface{}); ok {
+		switch hk.Type {
+		case TYPE_NUMBER, TYPE_STRING, TYPE_BINARY:
+			if key, ok := v[hk.Type].(string); ok {
+				k.HashKey = key
+			} else {
+				// log.Printf("type assertion to string failed for : %s\n", hk.Type)
+				return nil
+			}
+		default:
+			// log.Printf("invalid primary key hash type : %s\n", hk.Type)
+			return nil
+		}
+	} else {
+		// log.Printf("type assertion to map[string]interface{} failed for : %s\n", hk.Name)
+		return nil
+	}
+
+	if t.Key.HasRange() {
+		rk := t.Key.RangeAttribute
+		if v, ok := s[rk.Name].(map[string]interface{}); ok {
+			switch rk.Type {
+			case TYPE_NUMBER, TYPE_STRING, TYPE_BINARY:
+				if key, ok := v[rk.Type].(string); ok {
+					k.RangeKey = key
+				} else {
+					// log.Printf("type assertion to string failed for : %s\n", rk.Type)
+					return nil
+				}
+			default:
+				// log.Printf("invalid primary key range type : %s\n", rk.Type)
+				return nil
+			}
+		} else {
+			// log.Printf("type assertion to map[string]interface{} failed for : %s\n", rk.Name)
+			return nil
+		}
+	}
+
+	return k
 }

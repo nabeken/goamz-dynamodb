@@ -10,19 +10,92 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bitly/go-simplejson"
 	"github.com/crowdmob/goamz/aws"
 )
+
+const apiVersion = "DynamoDB_20120810"
 
 type Server struct {
 	Auth   aws.Auth
 	Region aws.Region
 }
 
+func (s *Server) NewTable(name string, key PrimaryKey) *Table {
+	return &Table{s, name, key}
+}
+
+func (s *Server) ListTables() ([]string, error) {
+	var tables []string
+
+	query := NewEmptyQuery()
+
+	jsonResponse, err := s.queryServer(target("ListTables"), query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	json, err := simplejson.NewJson(jsonResponse)
+
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := json.Get("TableNames").Array()
+
+	if err != nil {
+		return nil, &UnexpectedResponseError{jsonResponse}
+	}
+
+	for _, value := range response {
+		if t, ok := (value).(string); ok {
+			tables = append(tables, t)
+		}
+	}
+
+	return tables, nil
+}
+
+func (s *Server) CreateTable(tableDescription TableDescription) (string, error) {
+	query := NewEmptyQuery()
+	query.AddCreateRequestTable(tableDescription)
+
+	jsonResponse, err := s.queryServer(target("CreateTable"), query)
+	if err != nil {
+		return "", err
+	}
+
+	json, err := simplejson.NewJson(jsonResponse)
+	if err != nil {
+		return "", err
+	}
+
+	return json.Get("TableDescription").Get("TableStatus").MustString(), nil
+}
+
+func (s *Server) DeleteTable(tableDescription TableDescription) (string, error) {
+	query := NewEmptyQuery()
+	query.AddDeleteRequestTable(tableDescription)
+
+	jsonResponse, err := s.queryServer(target("DeleteTable"), query)
+	if err != nil {
+		return "", err
+	}
+
+	json, err := simplejson.NewJson(jsonResponse)
+	if err != nil {
+		return "", err
+	}
+
+	return json.Get("TableDescription").Get("TableStatus").MustString(), nil
+}
+
 // Specific error constants
 var (
-	ErrNotFound                         = errors.New("dynamodb: item not found")
-	ErrAtLeastOneAttributeRequired      = errors.New("dynamodb: at least one attribute is required")
-	ErrInconsistencyInTableDescriptionT = errors.New("dynamodb: inconsistency found in TableDescriptionT")
+	ErrNotFound                        = errors.New("dynamodb: item not found")
+	ErrAtLeastOneAttributeRequired     = errors.New("dynamodb: at least one attribute is required")
+	ErrInconsistencyInTableDescription = errors.New("dynamodb: inconsistency found in TableDescriptionT")
 )
 
 type UnexpectedResponseError struct {
@@ -117,5 +190,5 @@ func (s *Server) queryServer(target string, query *Query) ([]byte, error) {
 }
 
 func target(name string) string {
-	return "DynamoDB_20120810." + name
+	return apiVersion + "." + name
 }
