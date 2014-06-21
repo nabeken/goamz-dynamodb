@@ -95,7 +95,9 @@ func (s *ItemSuite) TestConditionalAddAttributesItem(c *check.C) {
 		if ok, err := s.table.ConditionalAddAttributes(pk, attrs, expected); ok {
 			c.Errorf("Expect condition does not meet.")
 		} else {
-			c.Check(err.Error(), check.Matches, "ConditionalCheckFailedException.*")
+			derr := err.(*dynamodb.Error)
+			c.Check(derr.Status, check.Equals, "400 Bad Request")
+			c.Check(derr.Code, check.Equals, "ConditionalCheckFailedException")
 		}
 
 	}
@@ -126,21 +128,27 @@ func (s *ItemSuite) TestConditionalPutUpdateDeleteItem(c *check.C) {
 		if ok, err := s.table.ConditionalPutItem("NewHashKeyVal", "", attrs, expected); ok {
 			c.Errorf("Expect condition does not meet.")
 		} else {
-			c.Check(err.Error(), check.Matches, "ConditionalCheckFailedException.*")
+			derr := err.(*dynamodb.Error)
+			c.Check(derr.Status, check.Equals, "400 Bad Request")
+			c.Check(derr.Code, check.Equals, "ConditionalCheckFailedException")
 		}
 
 		// Update attributes with condition failed
 		if ok, err := s.table.ConditionalUpdateAttributes(pk, attrs, expected); ok {
 			c.Errorf("Expect condition does not meet.")
 		} else {
-			c.Check(err.Error(), check.Matches, "ConditionalCheckFailedException.*")
+			derr := err.(*dynamodb.Error)
+			c.Check(derr.Status, check.Equals, "400 Bad Request")
+			c.Check(derr.Code, check.Equals, "ConditionalCheckFailedException")
 		}
 
 		// Delete attributes with condition failed
 		if ok, err := s.table.ConditionalDeleteAttributes(pk, attrs, expected); ok {
 			c.Errorf("Expect condition does not meet.")
 		} else {
-			c.Check(err.Error(), check.Matches, "ConditionalCheckFailedException.*")
+			derr := err.(*dynamodb.Error)
+			c.Check(derr.Status, check.Equals, "400 Bad Request")
+			c.Check(derr.Code, check.Equals, "ConditionalCheckFailedException")
 		}
 	}
 
@@ -224,7 +232,9 @@ func (s *ItemSuite) TestConditionalPutUpdateDeleteItem(c *check.C) {
 		if ok, err := s.table.ConditionalDeleteItem(pk, expected); ok {
 			c.Errorf("Expect condition does not meet.")
 		} else {
-			c.Check(err.Error(), check.Matches, "ConditionalCheckFailedException.*")
+			derr := err.(*dynamodb.Error)
+			c.Check(derr.Status, check.Equals, "400 Bad Request")
+			c.Check(derr.Code, check.Equals, "ConditionalCheckFailedException")
 		}
 	}
 
@@ -239,7 +249,7 @@ func (s *ItemSuite) TestConditionalPutUpdateDeleteItem(c *check.C) {
 
 		// Get to verify Delete operation
 		_, err := s.table.GetItem(pk)
-		c.Check(err.Error(), check.Matches, "Item not found")
+		c.Check(err.Error(), check.Matches, "dynamodb: item not found")
 	}
 }
 
@@ -286,7 +296,7 @@ func (s *ItemSuite) TestPutGetDeleteItem(c *check.C) {
 
 	// Get to verify Delete operation
 	_, err = s.table.GetItem(pk)
-	c.Check(err.Error(), check.Matches, "Item not found")
+	c.Check(err.Error(), check.Matches, "dynamodb: item not found")
 }
 
 func (s *ItemSuite) TestUpdateItem(c *check.C) {

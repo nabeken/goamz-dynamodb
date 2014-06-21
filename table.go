@@ -2,8 +2,6 @@ package dynamodb
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 
 	"github.com/bitly/go-simplejson"
 )
@@ -96,11 +94,11 @@ func (t *TableDescriptionT) BuildPrimaryKey() (pk PrimaryKey, err error) {
 		var attr *Attribute
 		ad := findAttributeDefinitionByName(t.AttributeDefinitions, k.AttributeName)
 		if ad == nil {
-			return pk, errors.New("An inconsistency found in TableDescriptionT")
+			return pk, ErrInconsistencyInTableDescriptionT
 		}
 		attr = ad.GetEmptyAttribute()
 		if attr == nil {
-			return pk, errors.New("An inconsistency found in TableDescriptionT")
+			return pk, ErrInconsistencyInTableDescriptionT
 		}
 
 		switch k.KeyType {
@@ -137,8 +135,7 @@ func (s *Server) ListTables() ([]string, error) {
 	response, err := json.Get("TableNames").Array()
 
 	if err != nil {
-		message := fmt.Sprintf("Unexpected response %s", jsonResponse)
-		return nil, errors.New(message)
+		return nil, &UnexpectedResponseError{jsonResponse}
 	}
 
 	for _, value := range response {
@@ -155,15 +152,13 @@ func (s *Server) CreateTable(tableDescription TableDescriptionT) (string, error)
 	query.AddCreateRequestTable(tableDescription)
 
 	jsonResponse, err := s.queryServer(target("CreateTable"), query)
-
 	if err != nil {
-		return "unknown", err
+		return "", err
 	}
 
 	json, err := simplejson.NewJson(jsonResponse)
-
 	if err != nil {
-		return "unknown", err
+		return "", err
 	}
 
 	return json.Get("TableDescription").Get("TableStatus").MustString(), nil
@@ -174,15 +169,13 @@ func (s *Server) DeleteTable(tableDescription TableDescriptionT) (string, error)
 	query.AddDeleteRequestTable(tableDescription)
 
 	jsonResponse, err := s.queryServer(target("DeleteTable"), query)
-
 	if err != nil {
-		return "unknown", err
+		return "", err
 	}
 
 	json, err := simplejson.NewJson(jsonResponse)
-
 	if err != nil {
-		return "unknown", err
+		return "", err
 	}
 
 	return json.Get("TableDescription").Get("TableStatus").MustString(), nil

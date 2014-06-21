@@ -1,9 +1,6 @@
 package dynamodb
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/bitly/go-simplejson"
 )
 
@@ -69,8 +66,7 @@ func runQuery(q *Query, t *Table) ([]map[string]*Attribute, error) {
 
 	itemCount, err := json.Get("Count").Int()
 	if err != nil {
-		message := fmt.Sprintf("Unexpected response %s", jsonResponse)
-		return nil, errors.New(message)
+		return nil, &UnexpectedResponseError{jsonResponse}
 	}
 
 	results := make([]map[string]*Attribute, itemCount)
@@ -78,8 +74,7 @@ func runQuery(q *Query, t *Table) ([]map[string]*Attribute, error) {
 	for i, _ := range results {
 		item, err := json.Get("Items").GetIndex(i).Map()
 		if err != nil {
-			message := fmt.Sprintf("Unexpected response %s", jsonResponse)
-			return nil, errors.New(message)
+			return nil, &UnexpectedResponseError{jsonResponse}
 		}
 		results[i] = parseAttributes(item)
 	}

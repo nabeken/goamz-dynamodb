@@ -1,10 +1,6 @@
 package dynamodb
 
 import (
-	"errors"
-	"fmt"
-	"log"
-
 	"github.com/bitly/go-simplejson"
 )
 
@@ -21,16 +17,14 @@ func (t *Table) FetchPartialResults(query *Query) ([]map[string]*Attribute, *Key
 
 	itemCount, err := json.Get("Count").Int()
 	if err != nil {
-		message := fmt.Sprintf("Unexpected response %s", jsonResponse)
-		return nil, nil, errors.New(message)
+		return nil, nil, &UnexpectedResponseError{jsonResponse}
 	}
 
 	results := make([]map[string]*Attribute, itemCount)
 	for i, _ := range results {
 		item, err := json.Get("Items").GetIndex(i).Map()
 		if err != nil {
-			message := fmt.Sprintf("Unexpected response %s", jsonResponse)
-			return nil, nil, errors.New(message)
+			return nil, nil, &UnexpectedResponseError{jsonResponse}
 		}
 		results[i] = parseAttributes(item)
 	}
@@ -98,15 +92,15 @@ func parseKey(t *Table, s map[string]interface{}) *Key {
 			if key, ok := v[hk.Type].(string); ok {
 				k.HashKey = key
 			} else {
-				log.Printf("type assertion to string failed for : %s\n", hk.Type)
+				// log.Printf("type assertion to string failed for : %s\n", hk.Type)
 				return nil
 			}
 		default:
-			log.Printf("invalid primary key hash type : %s\n", hk.Type)
+			// log.Printf("invalid primary key hash type : %s\n", hk.Type)
 			return nil
 		}
 	} else {
-		log.Printf("type assertion to map[string]interface{} failed for : %s\n", hk.Name)
+		// log.Printf("type assertion to map[string]interface{} failed for : %s\n", hk.Name)
 		return nil
 	}
 
@@ -118,15 +112,15 @@ func parseKey(t *Table, s map[string]interface{}) *Key {
 				if key, ok := v[rk.Type].(string); ok {
 					k.RangeKey = key
 				} else {
-					log.Printf("type assertion to string failed for : %s\n", rk.Type)
+					// log.Printf("type assertion to string failed for : %s\n", rk.Type)
 					return nil
 				}
 			default:
-				log.Printf("invalid primary key range type : %s\n", rk.Type)
+				// log.Printf("invalid primary key range type : %s\n", rk.Type)
 				return nil
 			}
 		} else {
-			log.Printf("type assertion to map[string]interface{} failed for : %s\n", rk.Name)
+			// log.Printf("type assertion to map[string]interface{} failed for : %s\n", rk.Name)
 			return nil
 		}
 	}
