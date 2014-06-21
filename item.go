@@ -2,7 +2,6 @@ package dynamodb
 
 import (
 	"errors"
-	"fmt"
 	"log"
 
 	"github.com/bitly/go-simplejson"
@@ -58,11 +57,9 @@ func (batchGetItem *BatchGetItem) Execute() (map[string][]map[string]*Attribute,
 	}
 
 	results := make(map[string][]map[string]*Attribute)
-
 	tables, err := json.Get("Responses").Map()
 	if err != nil {
-		message := fmt.Sprintf("Unexpected response %s", jsonResponse)
-		return nil, errors.New(message)
+		return nil, &UnexpectedResponseError{jsonResponse}
 	}
 
 	for table, entries := range tables {
@@ -70,15 +67,13 @@ func (batchGetItem *BatchGetItem) Execute() (map[string][]map[string]*Attribute,
 
 		jsonEntriesArray, ok := entries.([]interface{})
 		if !ok {
-			message := fmt.Sprintf("Unexpected response %s", jsonResponse)
-			return nil, errors.New(message)
+			return nil, &UnexpectedResponseError{jsonResponse}
 		}
 
 		for _, entry := range jsonEntriesArray {
 			item, ok := entry.(map[string]interface{})
 			if !ok {
-				message := fmt.Sprintf("Unexpected response %s", jsonResponse)
-				return nil, errors.New(message)
+				return nil, &UnexpectedResponseError{jsonResponse}
 			}
 
 			unmarshalledItem := parseAttributes(item)
@@ -109,8 +104,7 @@ func (batchWriteItem *BatchWriteItem) Execute() (map[string]interface{}, error) 
 
 	unprocessed, err := json.Get("UnprocessedItems").Map()
 	if err != nil {
-		message := fmt.Sprintf("Unexpected response %s", jsonResponse)
-		return nil, errors.New(message)
+		return nil, &UnexpectedResponseError{jsonResponse}
 	}
 
 	if len(unprocessed) == 0 {
@@ -155,8 +149,7 @@ func (t *Table) getItem(key *Key, consistentRead bool) (map[string]*Attribute, e
 
 	item, err := itemJson.Map()
 	if err != nil {
-		message := fmt.Sprintf("Unexpected response %s", jsonResponse)
-		return nil, errors.New(message)
+		return nil, &UnexpectedResponseError{jsonResponse}
 	}
 
 	return parseAttributes(item), nil
@@ -173,7 +166,7 @@ func (t *Table) ConditionalPutItem(hashKey, rangeKey string, attributes, expecte
 
 func (t *Table) putItem(hashKey, rangeKey string, attributes, expected []Attribute) (bool, error) {
 	if len(attributes) == 0 {
-		return false, errors.New("At least one attribute is required.")
+		return false, ErrAtLeastOneAttributeRequired
 	}
 
 	q := NewQuery(t)
@@ -257,7 +250,7 @@ func (t *Table) ConditionalDeleteAttributes(key *Key, attributes, expected []Att
 func (t *Table) modifyAttributes(key *Key, attributes, expected []Attribute, action string) (bool, error) {
 
 	if len(attributes) == 0 {
-		return false, errors.New("At least one attribute is required.")
+		return false, ErrAtLeastOneAttributeRequired
 	}
 
 	q := NewQuery(t)
