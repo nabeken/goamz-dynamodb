@@ -208,18 +208,3 @@ func (s *Server) DescribeTable(name string) (*TableDescriptionT, error) {
 
 	return &r.Table, nil
 }
-
-func keyParam(k *PrimaryKey, hashKey string, rangeKey string) string {
-	value := fmt.Sprintf("{\"HashKeyElement\":{%s}", keyValue(k.KeyAttribute.Type, hashKey))
-
-	if k.RangeAttribute != nil {
-		value = fmt.Sprintf("%s,\"RangeKeyElement\":{%s}", value,
-			keyValue(k.RangeAttribute.Type, rangeKey))
-	}
-
-	return fmt.Sprintf("\"Key\":%s}", value)
-}
-
-func keyValue(key string, value string) string {
-	return fmt.Sprintf("\"%s\":\"%s\"", key, value)
-}

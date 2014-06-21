@@ -16,20 +16,6 @@ type Server struct {
 	Region aws.Region
 }
 
-/*
-type Query struct {
-	Query string
-}
-*/
-
-/*
-func NewQuery(queryParts []string) *Query {
-	return &Query{
-		"{" + strings.Join(queryParts, ",") + "}",
-	}
-}
-*/
-
 // Specific error constants
 var ErrNotFound = errors.New("Item not found")
 
