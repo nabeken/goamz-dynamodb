@@ -46,6 +46,11 @@ You can stop supervisord:
 $ (cd test && make stop)
 ```
 
+## [dynalite](https://github.com/mhart/dynalite)
+
+It is a good alternative to DynamoDB local. Dynalite may allow us to run integrration tests on travis-ci.
+I have a plan to add dynalite but contributions are very much welcomed.
+
 ### Why do you not run integration tests on travis-ci?
 
 According to LICENSE.txt in DynamoDB local distribution, AWS grants us a license to run DynamoDB local on the machine owned or controlled by us.
