@@ -6,24 +6,24 @@ import (
 )
 
 type ItemSuite struct {
-	TableDescriptionT dynamodb.TableDescriptionT
+	TableDescription dynamodb.TableDescription
 	DynamoDBTest
 	WithRange bool
 }
 
 func (s *ItemSuite) SetUpSuite(c *check.C) {
 	setUpAuth(c)
-	s.DynamoDBTest.TableDescriptionT = s.TableDescriptionT
+	s.DynamoDBTest.TableDescription = s.TableDescription
 	s.server = &dynamodb.Server{dynamodb_auth, dynamodb_region}
-	pk, err := s.TableDescriptionT.BuildPrimaryKey()
+	pk, err := s.TableDescription.BuildPrimaryKey()
 	if err != nil {
 		c.Skip(err.Error())
 	}
-	s.table = s.server.NewTable(s.TableDescriptionT.TableName, pk)
+	s.table = s.server.NewTable(s.TableDescription.TableName, pk)
 
 	// Cleanup
 	s.TearDownSuite(c)
-	_, err = s.server.CreateTable(s.TableDescriptionT)
+	_, err = s.server.CreateTable(s.TableDescription)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -31,17 +31,17 @@ func (s *ItemSuite) SetUpSuite(c *check.C) {
 }
 
 var item_suite = &ItemSuite{
-	TableDescriptionT: dynamodb.TableDescriptionT{
+	TableDescription: dynamodb.TableDescription{
 		TableName: "DynamoDBTestMyTable",
-		AttributeDefinitions: []dynamodb.AttributeDefinitionT{
-			dynamodb.AttributeDefinitionT{"TestHashKey", "S"},
-			dynamodb.AttributeDefinitionT{"TestRangeKey", "N"},
+		AttributeDefinitions: []dynamodb.AttributeDefinition{
+			dynamodb.AttributeDefinition{"TestHashKey", "S"},
+			dynamodb.AttributeDefinition{"TestRangeKey", "N"},
 		},
-		KeySchema: []dynamodb.KeySchemaT{
-			dynamodb.KeySchemaT{"TestHashKey", "HASH"},
-			dynamodb.KeySchemaT{"TestRangeKey", "RANGE"},
+		KeySchema: []dynamodb.KeySchema{
+			dynamodb.KeySchema{"TestHashKey", "HASH"},
+			dynamodb.KeySchema{"TestRangeKey", "RANGE"},
 		},
-		ProvisionedThroughput: dynamodb.ProvisionedThroughputT{
+		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
 			ReadCapacityUnits:  1,
 			WriteCapacityUnits: 1,
 		},
@@ -50,15 +50,15 @@ var item_suite = &ItemSuite{
 }
 
 var item_without_range_suite = &ItemSuite{
-	TableDescriptionT: dynamodb.TableDescriptionT{
+	TableDescription: dynamodb.TableDescription{
 		TableName: "DynamoDBTestMyTable",
-		AttributeDefinitions: []dynamodb.AttributeDefinitionT{
-			dynamodb.AttributeDefinitionT{"TestHashKey", "S"},
+		AttributeDefinitions: []dynamodb.AttributeDefinition{
+			dynamodb.AttributeDefinition{"TestHashKey", "S"},
 		},
-		KeySchema: []dynamodb.KeySchemaT{
-			dynamodb.KeySchemaT{"TestHashKey", "HASH"},
+		KeySchema: []dynamodb.KeySchema{
+			dynamodb.KeySchema{"TestHashKey", "HASH"},
 		},
-		ProvisionedThroughput: dynamodb.ProvisionedThroughputT{
+		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
 			ReadCapacityUnits:  1,
 			WriteCapacityUnits: 1,
 		},
