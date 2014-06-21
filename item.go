@@ -1,10 +1,11 @@
 package dynamodb
 
-import simplejson "github.com/bitly/go-simplejson"
 import (
 	"errors"
 	"fmt"
 	"log"
+
+	"github.com/bitly/go-simplejson"
 )
 
 type BatchGetItem struct {

@@ -2,11 +2,12 @@ package dynamodb_test
 
 import (
 	"flag"
+	"testing"
+	"time"
+
 	"github.com/crowdmob/goamz/aws"
 	"github.com/nabeken/goamz-dynamodb"
 	"gopkg.in/check.v1"
-	"testing"
-	"time"
 )
 
 const TIMEOUT = 3 * time.Minute

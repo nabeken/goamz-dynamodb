@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	simplejson "github.com/bitly/go-simplejson"
+
+	"github.com/bitly/go-simplejson"
 )
 
 type Table struct {

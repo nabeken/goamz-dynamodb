@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	simplejson "github.com/bitly/go-simplejson"
+	"github.com/bitly/go-simplejson"
 )
 
 func (t *Table) FetchPartialResults(query *Query) ([]map[string]*Attribute, *Key, error) {

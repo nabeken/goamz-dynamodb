@@ -2,6 +2,7 @@ package dynamodb_test
 
 import (
 	"fmt"
+
 	"github.com/nabeken/goamz-dynamodb"
 	"gopkg.in/check.v1"
 )
