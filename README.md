@@ -1,6 +1,6 @@
 # GoAMZ-DynamoDB [![Build Status](https://travis-ci.org/nabeken/goamz-dynamodb.png?branch=dev)](https://travis-ci.org/nabeken/goamz-dynamodb)
 
-GoAMZ-DynamoDB is my experimental project forked from [crowdmob/goamz/dynamodb](https://github.com/crowdmob/dynamodb).
+GoAMZ-DynamoDB is my experimental project forked from [crowdmob/goamz/dynamodb](https://github.com/crowdmob/goamz/tree/master/dynamodb).
 
 These is no gurantees of API stability for now.
 
