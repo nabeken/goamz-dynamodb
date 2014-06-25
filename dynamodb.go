@@ -91,6 +91,24 @@ func (s *Server) DeleteTable(tableDescription TableDescription) (string, error) 
 	return json.Get("TableDescription").Get("TableStatus").MustString(), nil
 }
 
+func (s *Server) DescribeTable(name string) (*TableDescription, error) {
+	q := NewEmptyQuery()
+	q.addTableByName(name)
+
+	jsonResponse, err := s.queryServer(target("DescribeTable"), q)
+	if err != nil {
+		return nil, err
+	}
+
+	var r describeTableResponse
+	err = json.Unmarshal(jsonResponse, &r)
+	if err != nil {
+		return nil, err
+	}
+
+	return &r.Table, nil
+}
+
 // Specific error constants
 var (
 	ErrNotFound                        = errors.New("dynamodb: item not found")
