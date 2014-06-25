@@ -1,6 +1,8 @@
 package dynamodb_test
 
 import (
+	"testing"
+
 	"github.com/bitly/go-simplejson"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/nabeken/goamz-dynamodb"
@@ -377,4 +379,8 @@ func (s *QueryBuilderSuite) TestAddKeyConditions(c *check.C) {
 		c.Fatal(err)
 	}
 	c.Check(queryJson, check.DeepEquals, expectedJson)
+}
+
+func TestFromCheck(t *testing.T) {
+	check.TestingT(t)
 }
