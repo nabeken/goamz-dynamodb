@@ -17,6 +17,11 @@ var (
 	local  = flag.Bool("local", true, "Use DynamoDB local on 8080 instead of real server on us-east.")
 )
 
+var (
+	dummyRegion = aws.Region{DynamoDBEndpoint: "http://127.0.0.1:8000"}
+	dummyAuth = aws.Auth{AccessKey: "DUMMY_KEY", SecretKey: "DUMMY_SECRET"}
+)
+
 type actionHandler func(done chan struct{}) bool
 
 func handleAction(action actionHandler) (done chan struct{}) {
@@ -159,10 +164,7 @@ func (dt *DynamoDBTest) WaitUntilStatus(t *testing.T, status string) {
 func (dt *DynamoDBTest) SetupDB(t *testing.T) {
 	if *local {
 		t.Log("Using local server")
-		dt.server = &dynamodb.Server{
-			aws.Auth{AccessKey: "DUMMY_KEY", SecretKey: "DUMMY_SECRET"},
-			aws.Region{DynamoDBEndpoint: "http://127.0.0.1:8000"},
-		}
+		dt.server = &dynamodb.Server{dummyAuth, dummyRegion}
 	} else {
 		t.Log("Using REAL AMAZON SERVER")
 		awsAuth, err := aws.EnvAuth()
