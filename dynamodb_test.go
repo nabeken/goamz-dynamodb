@@ -19,7 +19,7 @@ var (
 
 var (
 	dummyRegion = aws.Region{DynamoDBEndpoint: "http://127.0.0.1:8000"}
-	dummyAuth = aws.Auth{AccessKey: "DUMMY_KEY", SecretKey: "DUMMY_SECRET"}
+	dummyAuth   = aws.Auth{AccessKey: "DUMMY_KEY", SecretKey: "DUMMY_SECRET"}
 )
 
 type actionHandler func(done chan struct{}) bool
