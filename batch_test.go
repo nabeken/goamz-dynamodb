@@ -1,11 +1,12 @@
 package dynamodb_test
 
 import (
+	"strconv"
+	"testing"
+
 	"github.com/nabeken/goamz-dynamodb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"strconv"
-	"testing"
 )
 
 type BatchSuite struct {
