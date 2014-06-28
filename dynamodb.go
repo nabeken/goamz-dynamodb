@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -15,6 +16,12 @@ import (
 )
 
 const apiVersion = "DynamoDB_20120810"
+
+var attempts = aws.AttemptStrategy{
+	Min:   5,
+	Total: 5 * time.Second,
+	Delay: 200 * time.Millisecond,
+}
 
 type Server struct {
 	Auth   aws.Auth
@@ -112,6 +119,7 @@ func (s *Server) DescribeTable(name string) (*TableDescription, error) {
 // Specific error constants
 var (
 	ErrNotFound                        = errors.New("dynamodb: item not found")
+	ErrFailedtoReadResponse            = errors.New("dynamodb: failed to read response")
 	ErrAtLeastOneAttributeRequired     = errors.New("dynamodb: at least one attribute is required")
 	ErrInconsistencyInTableDescription = errors.New("dynamodb: inconsistency found in TableDescriptionT")
 )
@@ -189,22 +197,61 @@ func (s *Server) queryServer(target string, query *Query) ([]byte, error) {
 	signer := aws.NewV4Signer(s.Auth, "dynamodb", s.Region)
 	signer.Sign(hreq)
 
-	resp, err := http.DefaultClient.Do(hreq)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+	for attempt := attempts.Start(); attempt.Next(); {
+		resp, err := http.DefaultClient.Do(hreq)
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("Could not read response body")
-		return nil, err
-	}
+		if err != nil {
+			if shouldRetry(err) {
+				continue
+			}
+			return nil, err
+		}
 
-	if resp.StatusCode != 200 {
-		return nil, NewError(resp, body)
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, ErrFailedtoReadResponse
+		}
+		if resp.StatusCode != 200 {
+			err = NewError(resp, body)
+			if shouldRetry(err) {
+				continue
+			}
+			return nil, err
+		}
+		return body, nil
 	}
-	return body, nil
+	return nil, err
+}
+
+// Based on github.com/crowdmob/goamz/s3
+func shouldRetry(err error) bool {
+	if err == nil {
+		return false
+	}
+	switch err {
+	case io.ErrUnexpectedEOF, io.EOF:
+		return true
+	}
+	switch e := err.(type) {
+	case *net.DNSError:
+		return true
+	case *net.OpError:
+		switch e.Op {
+		case "read", "write":
+			return true
+		}
+	case *Error:
+		switch e.Code {
+		case "InternalError", "ProvisionedThroughputExceededException":
+			return true
+		}
+		switch e.StatusCode {
+		case 500, 503:
+			return true
+		}
+	}
+	return false
 }
 
 func target(name string) string {
