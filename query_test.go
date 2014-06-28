@@ -1,35 +1,35 @@
 package dynamodb_test
 
 import (
-	"github.com/bitly/go-simplejson"
-	"github.com/crowdmob/goamz/aws"
+	"encoding/json"
+	"testing"
+
 	"github.com/nabeken/goamz-dynamodb"
-	"gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type QueryBuilderSuite struct {
+	suite.Suite
+
 	server *dynamodb.Server
 }
 
-var _ = check.Suite(&QueryBuilderSuite{})
-
-func (s *QueryBuilderSuite) SetUpSuite(c *check.C) {
-	auth := &aws.Auth{AccessKey: "", SecretKey: "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"}
-	s.server = &dynamodb.Server{*auth, aws.USEast}
+func (s *QueryBuilderSuite) SetupSuite() {
+	s.server = &dynamodb.Server{dummyAuth, dummyRegion}
 }
 
-func (s *QueryBuilderSuite) TestEmptyQuery(c *check.C) {
+func (s *QueryBuilderSuite) TestEmptyQuery() {
 	q := dynamodb.NewEmptyQuery()
 	queryString := q.String()
-	expectedString := "{}"
-	c.Check(queryString, check.Equals, expectedString)
-
-	if expectedString != queryString {
-		c.Fatalf("Unexpected Query String : %s\n", queryString)
-	}
+	assert.Equal(s.T(), queryString, "{}")
 }
 
-func (s *QueryBuilderSuite) TestAddWriteRequestItems(c *check.C) {
+type TestBatchWrite struct {
+	RequestItems map[string][]map[string]map[string]map[string]map[string]string
+}
+
+func (s *QueryBuilderSuite) TestAddWriteRequestItems() {
 	primary := dynamodb.NewStringAttribute("WidgetFoo", "")
 	secondary := dynamodb.NewNumericAttribute("Created", "")
 	key := dynamodb.PrimaryKey{primary, secondary}
@@ -72,12 +72,14 @@ func (s *QueryBuilderSuite) TestAddWriteRequestItems(c *check.C) {
 
 	q.AddWriteRequestItems(tableItems)
 
-	queryJson, err := simplejson.NewJson([]byte(q.String()))
+	queryJson := TestBatchWrite{}
+	err := json.Unmarshal([]byte(q.String()), &queryJson)
 	if err != nil {
-		c.Fatal(err)
+		s.T().Fatal(err)
 	}
 
-	expectedJson, err := simplejson.NewJson([]byte(`
+	expectedJson := TestBatchWrite{}
+	err = json.Unmarshal([]byte(`
 {
   "RequestItems": {
     "TestTable": [
@@ -95,6 +97,18 @@ func (s *QueryBuilderSuite) TestAddWriteRequestItems(c *check.C) {
       }
     ],
     "FooData": [
+      {
+        "DeleteRequest": {
+          "Key": {
+            "TestRangeKeyDel": {
+              "N": "7777777"
+            },
+            "TestHashKeyDel": {
+              "S": "DelKey"
+            }
+          }
+        }
+      },
       {
         "PutRequest": {
           "Item": {
@@ -124,30 +138,35 @@ func (s *QueryBuilderSuite) TestAddWriteRequestItems(c *check.C) {
             }
           }
         }
-      },
-      {
-        "DeleteRequest": {
-          "Key": {
-            "TestRangeKeyDel": {
-              "N": "7777777"
-            },
-            "TestHashKeyDel": {
-              "S": "DelKey"
-            }
-          }
-        }
       }
     ]
   }
 }
-	`))
+	`), &expectedJson)
 	if err != nil {
-		c.Fatal(err)
+		s.T().Fatal(err)
 	}
-	c.Check(queryJson, check.DeepEquals, expectedJson)
+
+	// very scarily... horrible because current implementation is messed with map.
+	// I have no idea to compare two large maps except this way...
+	// k = TableName
+	for k := range queryJson.RequestItems {
+		// i = index
+		for i := range queryJson.RequestItems[k] {
+			// a = request
+			for a := range queryJson.RequestItems[k][i] {
+				// v= Item/Key
+				for v := range queryJson.RequestItems[k][i][a] {
+					for key := range queryJson.RequestItems[k][i][a][v] {
+						assert.Equal(s.T(), queryJson.RequestItems[k][i][a][v][key], expectedJson.RequestItems[k][i][a][v][key])
+					}
+				}
+			}
+		}
+	}
 }
 
-func (s *QueryBuilderSuite) TestAddExpectedQuery(c *check.C) {
+func (s *QueryBuilderSuite) TestAddExpectedQuery() {
 	primary := dynamodb.NewStringAttribute("domain", "")
 	key := dynamodb.PrimaryKey{primary, nil}
 	table := s.server.NewTable("sites", key)
@@ -161,12 +180,14 @@ func (s *QueryBuilderSuite) TestAddExpectedQuery(c *check.C) {
 	}
 	q.AddExpected(expected)
 
-	queryJson, err := simplejson.NewJson([]byte(q.String()))
+	queryJson := make(map[string]interface{})
+	err := json.Unmarshal([]byte(q.String()), &queryJson)
 	if err != nil {
-		c.Fatal(err)
+		s.T().Fatal(err)
 	}
 
-	expectedJson, err := simplejson.NewJson([]byte(`
+	expectedJson := make(map[string]interface{})
+	err = json.Unmarshal([]byte(`
 	{
 		"Expected": {
 			"domain": {
@@ -186,14 +207,14 @@ func (s *QueryBuilderSuite) TestAddExpectedQuery(c *check.C) {
 		},
 		"TableName": "sites"
 	}
-	`))
+	`), &expectedJson)
 	if err != nil {
-		c.Fatal(err)
+		s.T().Fatal(err)
 	}
-	c.Check(queryJson, check.DeepEquals, expectedJson)
+	assert.Equal(s.T(), queryJson, expectedJson)
 }
 
-func (s *QueryBuilderSuite) TestGetItemQuery(c *check.C) {
+func (s *QueryBuilderSuite) TestGetItemQuery() {
 	primary := dynamodb.NewStringAttribute("domain", "")
 	key := dynamodb.PrimaryKey{primary, nil}
 	table := s.server.NewTable("sites", key)
@@ -202,12 +223,14 @@ func (s *QueryBuilderSuite) TestGetItemQuery(c *check.C) {
 	q.AddKey(table, &dynamodb.Key{HashKey: "test"})
 
 	{
-		queryJson, err := simplejson.NewJson([]byte(q.String()))
+		queryJson := make(map[string]interface{})
+		err := json.Unmarshal([]byte(q.String()), &queryJson)
 		if err != nil {
-			c.Fatal(err)
+			s.T().Fatal(err)
 		}
 
-		expectedJson, err := simplejson.NewJson([]byte(`
+		expectedJson := make(map[string]interface{})
+		err = json.Unmarshal([]byte(`
 		{
 			"Key": {
 				"domain": {
@@ -216,22 +239,24 @@ func (s *QueryBuilderSuite) TestGetItemQuery(c *check.C) {
 			},
 			"TableName": "sites"
 		}
-		`))
+		`), &expectedJson)
 		if err != nil {
-			c.Fatal(err)
+			s.T().Fatal(err)
 		}
-		c.Check(queryJson, check.DeepEquals, expectedJson)
+		assert.Equal(s.T(), queryJson, expectedJson)
 	}
 
 	// Use ConsistentRead
 	{
 		q.ConsistentRead(true)
-		queryJson, err := simplejson.NewJson([]byte(q.String()))
+		queryJson := make(map[string]interface{})
+		err := json.Unmarshal([]byte(q.String()), &queryJson)
 		if err != nil {
-			c.Fatal(err)
+			s.T().Fatal(err)
 		}
 
-		expectedJson, err := simplejson.NewJson([]byte(`
+		expectedJson := make(map[string]interface{})
+		err = json.Unmarshal([]byte(`
 		{
 			"ConsistentRead": "true",
 			"Key": {
@@ -241,15 +266,15 @@ func (s *QueryBuilderSuite) TestGetItemQuery(c *check.C) {
 			},
 			"TableName": "sites"
 		}
-		`))
+		`), &expectedJson)
 		if err != nil {
-			c.Fatal(err)
+			s.T().Fatal(err)
 		}
-		c.Check(queryJson, check.DeepEquals, expectedJson)
+		assert.Equal(s.T(), queryJson, expectedJson)
 	}
 }
 
-func (s *QueryBuilderSuite) TestUpdateQuery(c *check.C) {
+func (s *QueryBuilderSuite) TestUpdateQuery() {
 	primary := dynamodb.NewStringAttribute("domain", "")
 	rangek := dynamodb.NewNumericAttribute("time", "")
 	key := dynamodb.PrimaryKey{primary, rangek}
@@ -262,11 +287,13 @@ func (s *QueryBuilderSuite) TestUpdateQuery(c *check.C) {
 	q.AddKey(table, &dynamodb.Key{HashKey: "test", RangeKey: "1234"})
 	q.AddUpdates(attributes, "ADD")
 
-	queryJson, err := simplejson.NewJson([]byte(q.String()))
+	queryJson := make(map[string]interface{})
+	err := json.Unmarshal([]byte(q.String()), &queryJson)
 	if err != nil {
-		c.Fatal(err)
+		s.T().Fatal(err)
 	}
-	expectedJson, err := simplejson.NewJson([]byte(`
+	expectedJson := make(map[string]interface{})
+	err = json.Unmarshal([]byte(`
 {
 	"AttributeUpdates": {
 		"count": {
@@ -286,14 +313,14 @@ func (s *QueryBuilderSuite) TestUpdateQuery(c *check.C) {
 	},
 	"TableName": "sites"
 }
-	`))
+	`), &expectedJson)
 	if err != nil {
-		c.Fatal(err)
+		s.T().Fatal(err)
 	}
-	c.Check(queryJson, check.DeepEquals, expectedJson)
+	assert.Equal(s.T(), queryJson, expectedJson)
 }
 
-func (s *QueryBuilderSuite) TestAddUpdates(c *check.C) {
+func (s *QueryBuilderSuite) TestAddUpdates() {
 	primary := dynamodb.NewStringAttribute("domain", "")
 	key := dynamodb.PrimaryKey{primary, nil}
 	table := s.server.NewTable("sites", key)
@@ -305,11 +332,13 @@ func (s *QueryBuilderSuite) TestAddUpdates(c *check.C) {
 
 	q.AddUpdates([]dynamodb.Attribute{*attr}, "ADD")
 
-	queryJson, err := simplejson.NewJson([]byte(q.String()))
+	queryJson := make(map[string]interface{})
+	err := json.Unmarshal([]byte(q.String()), &queryJson)
 	if err != nil {
-		c.Fatal(err)
+		s.T().Fatal(err)
 	}
-	expectedJson, err := simplejson.NewJson([]byte(`
+	expectedJson := make(map[string]interface{})
+	err = json.Unmarshal([]byte(`
 {
 	"AttributeUpdates": {
 		"StringSet": {
@@ -326,14 +355,14 @@ func (s *QueryBuilderSuite) TestAddUpdates(c *check.C) {
 	},
 	"TableName": "sites"
 }
-	`))
+	`), &expectedJson)
 	if err != nil {
-		c.Fatal(err)
+		s.T().Fatal(err)
 	}
-	c.Check(queryJson, check.DeepEquals, expectedJson)
+	assert.Equal(s.T(), queryJson, expectedJson)
 }
 
-func (s *QueryBuilderSuite) TestAddKeyConditions(c *check.C) {
+func (s *QueryBuilderSuite) TestAddKeyConditions() {
 	primary := dynamodb.NewStringAttribute("domain", "")
 	key := dynamodb.PrimaryKey{primary, nil}
 	table := s.server.NewTable("sites", key)
@@ -344,13 +373,15 @@ func (s *QueryBuilderSuite) TestAddKeyConditions(c *check.C) {
 		*dynamodb.NewStringAttributeComparison("path", "EQ", "/"),
 	}
 	q.AddKeyConditions(acs)
-	queryJson, err := simplejson.NewJson([]byte(q.String()))
+	queryJson := make(map[string]interface{})
+	err := json.Unmarshal([]byte(q.String()), &queryJson)
 
 	if err != nil {
-		c.Fatal(err)
+		s.T().Fatal(err)
 	}
 
-	expectedJson, err := simplejson.NewJson([]byte(`
+	expectedJson := make(map[string]interface{})
+	err = json.Unmarshal([]byte(`
 {
   "KeyConditions": {
     "domain": {
@@ -372,9 +403,13 @@ func (s *QueryBuilderSuite) TestAddKeyConditions(c *check.C) {
   },
   "TableName": "sites"
 }
-	`))
+	`), &expectedJson)
 	if err != nil {
-		c.Fatal(err)
+		s.T().Fatal(err)
 	}
-	c.Check(queryJson, check.DeepEquals, expectedJson)
+	assert.Equal(s.T(), queryJson, expectedJson)
+}
+
+func TestQueryBuilder(t *testing.T) {
+	suite.Run(t, new(QueryBuilderSuite))
 }

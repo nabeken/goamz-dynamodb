@@ -2,39 +2,76 @@ package dynamodb_test
 
 import (
 	"flag"
+	"log"
 	"testing"
 	"time"
 
 	"github.com/crowdmob/goamz/aws"
 	"github.com/nabeken/goamz-dynamodb"
-	"gopkg.in/check.v1"
 )
 
-const TIMEOUT = 3 * time.Minute
+const timeout = 3 * time.Minute
 
-var amazon = flag.Bool("amazon", false, "Enable tests against dynamodb")
-var local = flag.Bool("local", true, "Use DynamoDB local on 8080 instead of real server on us-east.")
+var (
+	amazon = flag.Bool("amazon", false, "Enable tests against dynamodb")
+	local  = flag.Bool("local", true, "Use DynamoDB local on 8080 instead of real server on us-east.")
+)
 
-var dynamodb_region aws.Region
-var dynamodb_auth aws.Auth
+var (
+	dummyRegion = aws.Region{DynamoDBEndpoint: "http://127.0.0.1:8000"}
+	dummyAuth   = aws.Auth{AccessKey: "DUMMY_KEY", SecretKey: "DUMMY_SECRET"}
+)
 
-type DynamoDBTest struct {
-	server           *dynamodb.Server
-	aws.Region       // Exports Region
-	TableDescription dynamodb.TableDescription
-	table            *dynamodb.Table
+type actionHandler func(done chan struct{}) bool
+
+func handleAction(action actionHandler) (done chan struct{}) {
+	done = make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				if action(done) {
+					return
+				}
+			}
+		}
+	}()
+	return done
 }
 
-// Delete all items in the table
-func (s *DynamoDBTest) TearDownTest(c *check.C) {
-	pk, err := s.TableDescription.BuildPrimaryKey()
+type DynamoDBTest struct {
+	TableDescription dynamodb.TableDescription
+	CreateNewTable   bool
+
+	server *dynamodb.Server
+	region aws.Region
+	table  *dynamodb.Table
+	t      *testing.T
+}
+
+// TearDownSuite implements suite.TearDownAllSuite interface.
+func (dt *DynamoDBTest) TearDownSuite() {
+	// Ensure that the table does not exist
+	dt.DeleteTable(dt.t)
+}
+
+// TearDownTest implements suite.TearDownTestSuite interface.
+func (dt *DynamoDBTest) TearDownTest() {
+	dt.DeleteAllItems(dt.t)
+}
+
+// DeleteAllItems deletes all items in the table
+func (dt *DynamoDBTest) DeleteAllItems(t *testing.T) {
+	pk, err := dt.TableDescription.BuildPrimaryKey()
 	if err != nil {
-		c.Fatal(err)
+		t.Fatal(err)
 	}
 
-	attrs, err := s.table.Scan(nil)
+	attrs, err := dt.table.Scan(nil)
 	if err != nil {
-		c.Fatal(err)
+		t.Fatal(err)
 	}
 	for _, a := range attrs {
 		key := &dynamodb.Key{
@@ -43,109 +80,111 @@ func (s *DynamoDBTest) TearDownTest(c *check.C) {
 		if pk.HasRange() {
 			key.RangeKey = a[pk.RangeAttribute.Name].Value
 		}
-		if ok, err := s.table.DeleteItem(key); !ok {
-			c.Fatal(err)
+		if ok, err := dt.table.DeleteItem(key); !ok {
+			t.Fatal(err)
 		}
 	}
 }
 
-func (s *DynamoDBTest) TearDownSuite(c *check.C) {
-	// return immediately in the case of calling c.Skip() in SetUpSuite()
-	if s.server == nil {
-		return
+func (dt *DynamoDBTest) CreateTable(t *testing.T) {
+	status, err := dt.server.CreateTable(dt.TableDescription)
+	if err != nil {
+		dt.t.Fatal(err)
+	}
+	if status != "ACTIVE" && status != "CREATING" {
+		dt.t.Error("Expect status to be ACTIVE or CREATING")
 	}
 
+	dt.WaitUntilStatus(dt.t, "ACTIVE")
+}
+
+func (dt *DynamoDBTest) DeleteTable(t *testing.T) {
 	// check whether the table exists
-	if tables, err := s.server.ListTables(); err != nil {
-		c.Fatal(err)
+	if tables, err := dt.server.ListTables(); err != nil {
+		t.Fatal(err)
 	} else {
-		if !findTableByName(tables, s.TableDescription.TableName) {
+		if !findTableByName(tables, dt.TableDescription.TableName) {
 			return
 		}
 	}
 
 	// Delete the table and wait
-	if _, err := s.server.DeleteTable(s.TableDescription); err != nil {
-		c.Fatal(err)
+	if _, err := dt.server.DeleteTable(dt.TableDescription); err != nil {
+		t.Fatal(err)
 	}
 
-	done := make(chan bool)
-	timeout := time.After(TIMEOUT)
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			default:
-				tables, err := s.server.ListTables()
-				if err != nil {
-					c.Fatal(err)
-				}
-				if findTableByName(tables, s.TableDescription.TableName) {
-					time.Sleep(5 * time.Second)
-				} else {
-					done <- true
-					return
-				}
-			}
-		}
-	}()
-	select {
-	case <-done:
-		break
-	case <-timeout:
-		c.Error("Expect the table to be deleted but timed out")
-		close(done)
-	}
-}
-
-func (s *DynamoDBTest) WaitUntilStatus(c *check.C, status string) {
-	// We should wait until the table is in specified status because a real DynamoDB has some delay for ready
-	done := make(chan bool)
-	timeout := time.After(TIMEOUT)
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			default:
-				desc, err := s.table.DescribeTable()
-				if err != nil {
-					c.Fatal(err)
-				}
-				if desc.TableStatus == status {
-					done <- true
-					return
-				}
-				time.Sleep(5 * time.Second)
-			}
-		}
-	}()
-	select {
-	case <-done:
-		break
-	case <-timeout:
-		c.Errorf("Expect a status to be %s, but timed out", status)
-		close(done)
-	}
-}
-
-func setUpAuth(c *check.C) {
-	if !*amazon {
-		c.Skip("Test against amazon not enabled.")
-	}
-	if *local {
-		c.Log("Using local server")
-		dynamodb_region = aws.Region{DynamoDBEndpoint: "http://127.0.0.1:8000"}
-		dynamodb_auth = aws.Auth{AccessKey: "DUMMY_KEY", SecretKey: "DUMMY_SECRET"}
-	} else {
-		c.Log("Using REAL AMAZON SERVER")
-		dynamodb_region = aws.USEast
-		auth, err := aws.EnvAuth()
+	timeoutChan := time.After(timeout)
+	done := handleAction(func(done chan struct{}) bool {
+		tables, err := dt.server.ListTables()
 		if err != nil {
-			c.Fatal(err)
+			t.Fatal(err)
 		}
-		dynamodb_auth = auth
+		if findTableByName(tables, dt.TableDescription.TableName) {
+			time.Sleep(5 * time.Second)
+		} else {
+			done <- struct{}{}
+			return true
+		}
+		return false
+	})
+
+	select {
+	case <-done:
+		break
+	case <-timeoutChan:
+		t.Error("Expect the table to be deleted but timed out")
+		close(done)
+	}
+}
+
+func (dt *DynamoDBTest) WaitUntilStatus(t *testing.T, status string) {
+	// We should wait until the table is in specified status because a real DynamoDB has some delay for ready
+	timeoutChan := time.After(timeout)
+	done := handleAction(func(done chan struct{}) bool {
+		desc, err := dt.table.DescribeTable()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if desc.TableStatus == status {
+			done <- struct{}{}
+			return true
+		}
+		time.Sleep(5 * time.Second)
+		return false
+	})
+	select {
+	case <-done:
+		break
+	case <-timeoutChan:
+		t.Errorf("Expect a status to be %s, but timed out", status)
+		close(done)
+	}
+}
+
+func (dt *DynamoDBTest) SetupDB(t *testing.T) {
+	if *local {
+		t.Log("Using local server")
+		dt.server = &dynamodb.Server{dummyAuth, dummyRegion}
+	} else {
+		t.Log("Using REAL AMAZON SERVER")
+		awsAuth, err := aws.EnvAuth()
+		if err != nil {
+			log.Fatal(err)
+		}
+		dt.server = &dynamodb.Server{awsAuth, aws.USEast}
+	}
+
+	pk, err := dt.TableDescription.BuildPrimaryKey()
+	if err != nil {
+		t.Skip(err.Error())
+	}
+
+	dt.table = dt.server.NewTable(dt.TableDescription.TableName, pk)
+	// Ensure that the table does not exist
+	dt.DeleteTable(t)
+
+	if dt.CreateNewTable {
+		dt.CreateTable(t)
 	}
 }
 
@@ -156,8 +195,4 @@ func findTableByName(tables []string, name string) bool {
 		}
 	}
 	return false
-}
-
-func Test(t *testing.T) {
-	check.TestingT(t)
 }
