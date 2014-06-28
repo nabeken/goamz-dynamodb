@@ -1,10 +1,12 @@
 package dynamodb_test
 
 import (
+	"testing"
 	"time"
 
 	"github.com/nabeken/goamz-dynamodb"
-	"gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type TestSubStruct struct {
@@ -169,22 +171,21 @@ func testAttrsWithNilSets() []dynamodb.Attribute {
 }
 
 type MarshallerSuite struct {
+	suite.Suite
 }
 
-var _ = check.Suite(&MarshallerSuite{})
-
-func (s *MarshallerSuite) TestMarshal(c *check.C) {
+func (s *MarshallerSuite) TestMarshal() {
 	testObj := testObject()
 	attrs, err := dynamodb.MarshalAttributes(testObj)
 	if err != nil {
-		c.Errorf("Error from dynamodb.MarshalAttributes: %#v", err)
+		s.T().Errorf("Error from dynamodb.MarshalAttributes: %#v", err)
 	}
 
 	expected := testAttrs()
-	c.Check(attrs, check.DeepEquals, expected)
+	assert.Equal(s.T(), attrs, expected)
 }
 
-func (s *MarshallerSuite) TestUnmarshal(c *check.C) {
+func (s *MarshallerSuite) TestUnmarshal() {
 	testObj := &TestStruct{}
 
 	attrMap := map[string]*dynamodb.Attribute{}
@@ -195,25 +196,25 @@ func (s *MarshallerSuite) TestUnmarshal(c *check.C) {
 
 	err := dynamodb.UnmarshalAttributes(&attrMap, testObj)
 	if err != nil {
-		c.Fatalf("Error from dynamodb.UnmarshalAttributes: %#v (Built: %#v)", err, testObj)
+		s.T().Fatalf("Error from dynamodb.UnmarshalAttributes: %#v (Built: %#v)", err, testObj)
 	}
 
 	expected := testObject()
-	c.Check(testObj, check.DeepEquals, expected)
+	assert.Equal(s.T(), testObj, expected)
 }
 
-func (s *MarshallerSuite) TestMarshalTime(c *check.C) {
+func (s *MarshallerSuite) TestMarshalTime() {
 	testObj := testObjectTime()
 	attrs, err := dynamodb.MarshalAttributes(testObj)
 	if err != nil {
-		c.Errorf("Error from dynamodb.MarshalAttributes: %#v", err)
+		s.T().Errorf("Error from dynamodb.MarshalAttributes: %#v", err)
 	}
 
 	expected := testAttrsTime()
-	c.Check(attrs, check.DeepEquals, expected)
+	assert.Equal(s.T(), attrs, expected)
 }
 
-func (s *MarshallerSuite) TestUnmarshalTime(c *check.C) {
+func (s *MarshallerSuite) TestUnmarshalTime() {
 	testObj := &TestStructTime{}
 
 	attrMap := map[string]*dynamodb.Attribute{}
@@ -224,47 +225,47 @@ func (s *MarshallerSuite) TestUnmarshalTime(c *check.C) {
 
 	err := dynamodb.UnmarshalAttributes(&attrMap, testObj)
 	if err != nil {
-		c.Fatalf("Error from dynamodb.UnmarshalAttributes: %#v (Built: %#v)", err, testObj)
+		s.T().Fatalf("Error from dynamodb.UnmarshalAttributes: %#v (Built: %#v)", err, testObj)
 	}
 
 	expected := testObjectTime()
-	c.Check(testObj, check.DeepEquals, expected)
+	assert.Equal(s.T(), testObj, expected)
 }
 
-func (s *MarshallerSuite) TestMarshalNilSets(c *check.C) {
+func (s *MarshallerSuite) TestMarshalNilSets() {
 	testObj := testObjectWithNilSets()
 	attrs, err := dynamodb.MarshalAttributes(testObj)
 	if err != nil {
-		c.Errorf("Error from dynamodb.MarshalAttributes: %#v", err)
+		s.T().Errorf("Error from dynamodb.MarshalAttributes: %#v", err)
 	}
 
 	expected := testAttrsWithNilSets()
-	c.Check(attrs, check.DeepEquals, expected)
+	assert.Equal(s.T(), attrs, expected)
 }
 
-func (s *MarshallerSuite) TestMarshalZeroValues(c *check.C) {
+func (s *MarshallerSuite) TestMarshalZeroValues() {
 	testObj := testObjectWithZeroValues()
 	attrs, err := dynamodb.MarshalAttributes(testObj)
 	if err != nil {
-		c.Errorf("Error from dynamodb.MarshalAttributes: %#v", err)
+		s.T().Errorf("Error from dynamodb.MarshalAttributes: %#v", err)
 	}
 
 	expected := testAttrsWithZeroValues()
-	c.Check(attrs, check.DeepEquals, expected)
+	assert.Equal(s.T(), attrs, expected)
 }
 
-func (s *MarshallerSuite) TestMarshalEmptySets(c *check.C) {
+func (s *MarshallerSuite) TestMarshalEmptySets() {
 	testObj := testObjectWithEmptySets()
 	attrs, err := dynamodb.MarshalAttributes(testObj)
 	if err != nil {
-		c.Errorf("Error from dynamodb.MarshalAttributes: %#v", err)
+		s.T().Errorf("Error from dynamodb.MarshalAttributes: %#v", err)
 	}
 
 	expected := testAttrsWithNilSets()
-	c.Check(attrs, check.DeepEquals, expected)
+	assert.Equal(s.T(), attrs, expected)
 }
 
-func (s *MarshallerSuite) TestUnmarshalEmptySets(c *check.C) {
+func (s *MarshallerSuite) TestUnmarshalEmptySets() {
 	testObj := &TestStruct{}
 
 	attrMap := map[string]*dynamodb.Attribute{}
@@ -275,9 +276,13 @@ func (s *MarshallerSuite) TestUnmarshalEmptySets(c *check.C) {
 
 	err := dynamodb.UnmarshalAttributes(&attrMap, testObj)
 	if err != nil {
-		c.Fatalf("Error from dynamodb.UnmarshalAttributes: %#v (Built: %#v)", err, testObj)
+		s.T().Fatalf("Error from dynamodb.UnmarshalAttributes: %#v (Built: %#v)", err, testObj)
 	}
 
 	expected := testObjectWithNilSets()
-	c.Check(testObj, check.DeepEquals, expected)
+	assert.Equal(s.T(), testObj, expected)
+}
+
+func TestMarshaller(t *testing.T) {
+	suite.Run(t, new(MarshallerSuite))
 }
