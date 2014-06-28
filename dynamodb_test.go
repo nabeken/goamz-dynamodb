@@ -180,6 +180,7 @@ func (dt *DynamoDBTest) SetupDB(t *testing.T) {
 	}
 
 	dt.table = dt.server.NewTable(dt.TableDescription.TableName, pk)
+	dt.t = t
 	// Ensure that the table does not exist
 	dt.DeleteTable(t)
 
