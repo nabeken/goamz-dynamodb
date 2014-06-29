@@ -16,7 +16,7 @@ type QueryBuilderSuite struct {
 }
 
 func (s *QueryBuilderSuite) SetupSuite() {
-	s.server = &dynamodb.Server{dummyAuth, dummyRegion}
+	s.server = &dynamodb.Server{dummyAuth, dummyRegion["local"]}
 }
 
 func (s *QueryBuilderSuite) TestEmptyQuery() {
@@ -191,13 +191,13 @@ func (s *QueryBuilderSuite) TestAddExpectedQuery() {
 	{
 		"Expected": {
 			"domain": {
-				"Exists": "true",
+				"Exists": true,
 				"Value": {
 					"S": "expectedTest"
 				}
 			},
 			"testKey": {
-				"Exists": "false"
+				"Exists": false
 			}
 		},
 		"Key": {
@@ -258,7 +258,7 @@ func (s *QueryBuilderSuite) TestGetItemQuery() {
 		expectedJson := make(map[string]interface{})
 		err = json.Unmarshal([]byte(`
 		{
-			"ConsistentRead": "true",
+			"ConsistentRead": true,
 			"Key": {
 				"domain": {
 					"S": "test"

@@ -568,7 +568,7 @@ func (s *ScanSuite) TestScanFilter() {
 }
 
 func TestTable(t *testing.T) {
-	if !*amazon {
+	if !*integration {
 		t.Skip("Test against amazon not enabled.")
 	}
 	suite.Run(t, new(TableSuite))

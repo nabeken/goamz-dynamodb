@@ -20,24 +20,18 @@ The API documentation is currently available at:
 
 ## Running tests
 
-goamz-dynamodb has unittest and integration test using DynamoDB Local and real DynamoDB.
+Thanks to dynalite, goamz-dynamodb is now integrated on every commit on Travis CI.
 
-DynamoDB local is managed by [supervisord](http://supervisord.org/).
-All you need is to install [virtualenv](http://virtualenv.readthedocs.org/en/latest/).
-Our Makefile installs supervisord in virtualenv and starts supervisord.
+goamz-dynamodb has unittest and integration test using DynamoDB Local, dynalite and real DynamoDB.
 
-## DynamoDB local
+DynamoDB local and dynalite are managed by [supervisord](http://supervisord.org/).
+You need to install [virtualenv](http://virtualenv.readthedocs.org/en/latest/) and nodejs if you want to run the tests against dynalite.
+Our Makefile installs supervisord automatically in virtualenv.
 
-To download and launch DynamoDB local:
-
-```sh
-$ (cd test && make)
-```
-
-To test:
+### supervisord
 
 ```sh
-$ go test -v -amazon
+$ (cd test && make supervisord)
 ```
 
 You can stop supervisord:
@@ -45,25 +39,49 @@ You can stop supervisord:
 ```sh
 $ (cd test && make stop)
 ```
+### DynamoDB local
 
-## [dynalite](https://github.com/mhart/dynalite)
+To download and launch DynamoDB local:
 
-It is a good alternative to DynamoDB local. Dynalite may allow us to run integrration tests on travis-ci.
-I have a plan to add dynalite but contributions are very much welcomed.
+```sh
+$ ./test/setup-dynamodblocal.sh
+$ (cd test && ./venv/bin/supervisorctl start dynamodb_local)
+```
+
+To test:
+
+```sh
+$ go test -v -integration -provider=local
+```
 
 ### Why do you not run integration tests on travis-ci?
 
 According to LICENSE.txt in DynamoDB local distribution, AWS grants us a license to run DynamoDB local on the machine owned or controlled by us.
 we can't use DynamoDB local on travis-ci since travis-ci runs by third party.
 
-## real DynamoDB server on us-east
+### [dynalite](https://github.com/mhart/dynalite)
+
+You need to install nodejs before installing dynalite.
+
+```sh
+$ npm install -g dynalite
+$ (cd test && ./venv/bin/supervisorctl start dynalite)
+```
+
+To test:
+
+```sh
+$ go test -v -integration -provider=dynalite
+```
+
+### real DynamoDB server on us-east
 
 _WARNING_: Some dangerous operations such as `DeleteTable` will be performed during the tests. Please be careful.
 
 To test:
 
 ```sh
-$ go test -v -amazon -local=false
+$ go test -v -integration -provider=amazon
 ```
 
 _Note_: Running tests against real DynamoDB will take several minutes.

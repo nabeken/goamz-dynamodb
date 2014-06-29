@@ -43,7 +43,7 @@ type Attribute struct {
 	Name      string
 	Value     string
 	SetValues []string
-	Exists    string // exists on dynamodb? Values: "true", "false", or ""
+	Exists    bool
 }
 
 type AttributeComparison struct {
@@ -149,11 +149,7 @@ func (a *Attribute) SetType() bool {
 }
 
 func (a *Attribute) SetExists(exists bool) *Attribute {
-	if exists {
-		a.Exists = "true"
-	} else {
-		a.Exists = "false"
-	}
+	a.Exists = exists
 	return a
 }
 

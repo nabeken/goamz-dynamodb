@@ -49,9 +49,7 @@ func (q *Query) AddAttributesToGet(attributes []string) {
 }
 
 func (q *Query) ConsistentRead(c bool) {
-	if c == true {
-		q.buffer["ConsistentRead"] = "true" //String "true", not bool true
-	}
+	q.buffer["ConsistentRead"] = c
 }
 
 func (q *Query) AddGetRequestItems(tableKeys map[*Table][]Key) {
@@ -207,11 +205,9 @@ func (q *Query) AddExpected(attributes []Attribute) {
 	expected := msi{}
 	for _, a := range attributes {
 		value := msi{}
-		if a.Exists != "" {
-			value["Exists"] = a.Exists
-		}
+		value["Exists"] = a.Exists
 		// If set Exists to false, we must remove Value
-		if value["Exists"] != "false" {
+		if a.Exists {
 			value["Value"] = msi{a.Type: map[bool]interface{}{true: a.SetValues, false: a.Value}[a.SetType()]}
 		}
 		expected[a.Name] = value
