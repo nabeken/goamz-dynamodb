@@ -4,6 +4,11 @@ GoAMZ-DynamoDB is my experimental project forked from [crowdmob/goamz/dynamodb](
 
 These is no gurantees of API stability for now.
 
+## API version
+
+- [v1](http://gopkg.in/nabeken/goamz-dynamodb.v1) has the compatibility with `crowdmob/goamz/dynamodb`.
+- [v2](http://gopkg.in/nabeken/goamz-dynamodb.v2) will have breaking changes.
+
 ## Goals
 
 - cleanup the code base
