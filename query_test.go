@@ -16,7 +16,7 @@ type QueryBuilderSuite struct {
 }
 
 func (s *QueryBuilderSuite) SetupSuite() {
-	s.server = &dynamodb.Server{dummyAuth, dummyRegion}
+	s.server = &dynamodb.Server{dummyAuth, dummyRegion["local"]}
 }
 
 func (s *QueryBuilderSuite) TestEmptyQuery() {

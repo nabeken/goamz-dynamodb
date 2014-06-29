@@ -37,7 +37,7 @@ $ (cd test && make)
 To test:
 
 ```sh
-$ go test -v -amazon
+$ go test -v -integration -provider=local
 ```
 
 You can stop supervisord:
@@ -63,7 +63,7 @@ _WARNING_: Some dangerous operations such as `DeleteTable` will be performed dur
 To test:
 
 ```sh
-$ go test -v -amazon -local=false
+$ go test -v -integration -provider=amazon
 ```
 
 _Note_: Running tests against real DynamoDB will take several minutes.

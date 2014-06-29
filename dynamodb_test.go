@@ -13,13 +13,17 @@ import (
 const timeout = 3 * time.Minute
 
 var (
-	amazon = flag.Bool("amazon", false, "Enable tests against dynamodb")
-	local  = flag.Bool("local", true, "Use DynamoDB local on 8080 instead of real server on us-east.")
+	integration = flag.Bool("integration", false, "Enable integration tests against DynamoDB server")
+	provider    = flag.String("provider", "local", "Specify a DynamoDB provider. Default: local. [local|dynalite|amazon]")
 )
 
 var (
-	dummyRegion = aws.Region{DynamoDBEndpoint: "http://127.0.0.1:8000"}
-	dummyAuth   = aws.Auth{AccessKey: "DUMMY_KEY", SecretKey: "DUMMY_SECRET"}
+	dummyRegion = map[string]aws.Region{
+		"local":    aws.Region{DynamoDBEndpoint: "http://127.0.0.1:8000"},
+		"dynalite": aws.Region{DynamoDBEndpoint: "http://127.0.0.1:4567"},
+		"amazon":   aws.USEast,
+	}
+	dummyAuth = aws.Auth{AccessKey: "DUMMY_KEY", SecretKey: "DUMMY_SECRET"}
 )
 
 type actionHandler func(done chan struct{}) bool
@@ -162,18 +166,24 @@ func (dt *DynamoDBTest) WaitUntilStatus(t *testing.T, status string) {
 }
 
 func (dt *DynamoDBTest) SetupDB(t *testing.T) {
-	if *local {
-		t.Log("Using local server")
-		dt.server = &dynamodb.Server{dummyAuth, dummyRegion}
-	} else {
+	if !*integration {
+		t.Skip("Integration tests are disabled")
+	}
+
+	t.Logf("Performing Integration tests on %s...", *provider)
+
+	var auth aws.Auth
+	if *provider == "amazon" {
 		t.Log("Using REAL AMAZON SERVER")
 		awsAuth, err := aws.EnvAuth()
 		if err != nil {
 			log.Fatal(err)
 		}
-		dt.server = &dynamodb.Server{awsAuth, aws.USEast}
+		auth = awsAuth
+	} else {
+		auth = dummyAuth
 	}
-
+	dt.server = &dynamodb.Server{auth, dummyRegion[*provider]}
 	pk, err := dt.TableDescription.BuildPrimaryKey()
 	if err != nil {
 		t.Skip(err.Error())

@@ -77,7 +77,7 @@ func (s *BatchSuite) TestBatchWrite() {
 }
 
 func TestBatch(t *testing.T) {
-	if !*amazon {
+	if !*integration {
 		t.Skip("Test against amazon not enabled.")
 	}
 	suite.Run(t, new(BatchSuite))
