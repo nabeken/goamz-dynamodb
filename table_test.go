@@ -493,6 +493,253 @@ func (s *ItemSuite) TestUpdateItemWithSet() {
 	}
 }
 
+type QuerySuite struct {
+	suite.Suite
+	DynamoDBTest
+
+	numOfRecords int
+}
+
+func (s *QuerySuite) SetupSuite() {
+	s.TableDescription = dynamodb.TableDescription{
+		TableName: "DynamoDBTestQuery",
+		AttributeDefinitions: []dynamodb.AttributeDefinition{
+			dynamodb.AttributeDefinition{"TestHashKey", "S"},
+			dynamodb.AttributeDefinition{"TestRangeKey", "N"},
+		},
+		KeySchema: []dynamodb.KeySchema{
+			dynamodb.KeySchema{"TestHashKey", "HASH"},
+			dynamodb.KeySchema{"TestRangeKey", "RANGE"},
+		},
+		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
+			ReadCapacityUnits:  10,
+			WriteCapacityUnits: 10,
+		},
+	}
+	s.CreateNewTable = true
+	s.numOfRecords = 100
+	s.SetupDB(s.T())
+}
+
+func (s *QuerySuite) createDummy() {
+	// Create dummy records
+	for i := 0; i < s.numOfRecords; i++ {
+		ai := strconv.Itoa(i)
+		attrs := []dynamodb.Attribute{
+			*dynamodb.NewNumericAttribute("Attr", ai),
+		}
+		if ok, err := s.table.PutItem("HashKeyVal", ai, attrs); !ok {
+			s.T().Fatal(err)
+		}
+	}
+}
+
+func (s *QuerySuite) TestQuery() {
+	s.createDummy()
+	atc := []dynamodb.AttributeComparison{
+		dynamodb.AttributeComparison{
+			AttributeName:      "TestHashKey",
+			ComparisonOperator: "EQ",
+			AttributeValueList: []dynamodb.Attribute{
+				dynamodb.Attribute{
+					Type:  dynamodb.TYPE_STRING,
+					Value: "HashKeyVal",
+				},
+			},
+		},
+		dynamodb.AttributeComparison{
+			AttributeName:      "TestRangeKey",
+			ComparisonOperator: "LT",
+			AttributeValueList: []dynamodb.Attribute{
+				dynamodb.Attribute{
+					Type:  dynamodb.TYPE_NUMBER,
+					Value: "1",
+				},
+			},
+		},
+	}
+	ret, err := s.table.Query(atc)
+	if assert.NoError(s.T(), err) {
+		assert.Equal(s.T(), 1, len(ret))
+		assert.Equal(s.T(), "0", ret[0]["TestRangeKey"].Value)
+	}
+}
+
+func (s *QuerySuite) TestLimitedQuery() {
+	s.createDummy()
+	atc := []dynamodb.AttributeComparison{
+		dynamodb.AttributeComparison{
+			AttributeName:      "TestHashKey",
+			ComparisonOperator: "EQ",
+			AttributeValueList: []dynamodb.Attribute{
+				dynamodb.Attribute{
+					Type:  dynamodb.TYPE_STRING,
+					Value: "HashKeyVal",
+				},
+			},
+		},
+	}
+	ret, err := s.table.LimitedQuery(atc, 1)
+	if assert.NoError(s.T(), err) {
+		assert.Equal(s.T(), 1, len(ret))
+		assert.Equal(s.T(), "0", ret[0]["TestRangeKey"].Value)
+	}
+}
+
+func (s *QuerySuite) TestCountQuery() {
+	s.createDummy()
+	atc := []dynamodb.AttributeComparison{
+		dynamodb.AttributeComparison{
+			AttributeName:      "TestHashKey",
+			ComparisonOperator: "EQ",
+			AttributeValueList: []dynamodb.Attribute{
+				dynamodb.Attribute{
+					Type:  dynamodb.TYPE_STRING,
+					Value: "HashKeyVal",
+				},
+			},
+		},
+		dynamodb.AttributeComparison{
+			AttributeName:      "TestRangeKey",
+			ComparisonOperator: "LT",
+			AttributeValueList: []dynamodb.Attribute{
+				dynamodb.Attribute{
+					Type:  dynamodb.TYPE_NUMBER,
+					Value: "2",
+				},
+			},
+		},
+	}
+	c, err := s.table.CountQuery(atc)
+	if assert.NoError(s.T(), err) {
+		assert.Equal(s.T(), 2, c)
+	}
+}
+
+type QueryOnIndexSuite struct {
+	suite.Suite
+	DynamoDBTest
+
+	numOfRecords int
+}
+
+func (s *QueryOnIndexSuite) SetupSuite() {
+	s.TableDescription = dynamodb.TableDescription{
+		TableName: "DynamoDBTestQueryOnIndex",
+		AttributeDefinitions: []dynamodb.AttributeDefinition{
+			dynamodb.AttributeDefinition{"TestHashKey", "S"},
+			dynamodb.AttributeDefinition{"TestRangeKey", "N"},
+			dynamodb.AttributeDefinition{"LSIKey", "N"},
+			dynamodb.AttributeDefinition{"GSIKey", "N"},
+		},
+		KeySchema: []dynamodb.KeySchema{
+			dynamodb.KeySchema{"TestHashKey", "HASH"},
+			dynamodb.KeySchema{"TestRangeKey", "RANGE"},
+		},
+		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
+			ReadCapacityUnits:  10,
+			WriteCapacityUnits: 10,
+		},
+		GlobalSecondaryIndexes: []dynamodb.GlobalSecondaryIndex{
+			dynamodb.GlobalSecondaryIndex{
+				IndexName: "GSI",
+				KeySchema: []dynamodb.KeySchema{
+					dynamodb.KeySchema{"GSIKey", "HASH"},
+				},
+				Projection: dynamodb.Projection{
+					ProjectionType: "KEYS_ONLY",
+				},
+				ProvisionedThroughput: dynamodb.ProvisionedThroughput{
+					ReadCapacityUnits:  10,
+					WriteCapacityUnits: 10,
+				},
+			},
+		},
+		LocalSecondaryIndexes: []dynamodb.LocalSecondaryIndex{
+			dynamodb.LocalSecondaryIndex{
+				IndexName: "LSI",
+				KeySchema: []dynamodb.KeySchema{
+					dynamodb.KeySchema{"TestHashKey", "HASH"},
+					dynamodb.KeySchema{"LSIKey", "RANGE"},
+				},
+				Projection: dynamodb.Projection{
+					ProjectionType: "KEYS_ONLY",
+				},
+			},
+		},
+	}
+
+	s.CreateNewTable = true
+	s.numOfRecords = 100
+	s.SetupDB(s.T())
+}
+
+func (s *QueryOnIndexSuite) createDummy() {
+	// Create dummy records
+	for i := 0; i < s.numOfRecords; i++ {
+		ai := strconv.Itoa(i)
+		attrs := []dynamodb.Attribute{
+			*dynamodb.NewNumericAttribute("GSIKey", ai),
+			*dynamodb.NewNumericAttribute("LSIKey", ai),
+		}
+		if ok, err := s.table.PutItem("HashKeyVal", ai, attrs); !ok {
+			s.T().Fatal(err)
+		}
+	}
+}
+
+func (s *QueryOnIndexSuite) TestQueryOnIndex() {
+	s.createDummy()
+	atc := []dynamodb.AttributeComparison{
+		dynamodb.AttributeComparison{
+			AttributeName:      "GSIKey",
+			ComparisonOperator: "EQ",
+			AttributeValueList: []dynamodb.Attribute{
+				dynamodb.Attribute{
+					Type:  dynamodb.TYPE_NUMBER,
+					Value: "80",
+				},
+			},
+		},
+	}
+	ret, err := s.table.QueryOnIndex(atc, "GSI")
+	if assert.NoError(s.T(), err) {
+		assert.Equal(s.T(), 1, len(ret))
+		assert.Equal(s.T(), "80", ret[0]["TestRangeKey"].Value)
+	}
+}
+
+func (s *QueryOnIndexSuite) TestLimitedQueryOnIndex() {
+	s.createDummy()
+	atc := []dynamodb.AttributeComparison{
+		dynamodb.AttributeComparison{
+			AttributeName:      "TestHashKey",
+			ComparisonOperator: "EQ",
+			AttributeValueList: []dynamodb.Attribute{
+				dynamodb.Attribute{
+					Type:  dynamodb.TYPE_STRING,
+					Value: "HashKeyVal",
+				},
+			},
+		},
+		dynamodb.AttributeComparison{
+			AttributeName:      "LSIKey",
+			ComparisonOperator: "LT",
+			AttributeValueList: []dynamodb.Attribute{
+				dynamodb.Attribute{
+					Type:  dynamodb.TYPE_NUMBER,
+					Value: "10",
+				},
+			},
+		},
+	}
+	ret, err := s.table.LimitedQueryOnIndex(atc, "LSI", 5)
+	if assert.NoError(s.T(), err) {
+		assert.Equal(s.T(), 5, len(ret))
+		assert.Equal(s.T(), "0", ret[0]["TestRangeKey"].Value)
+	}
+}
+
 type ScanSuite struct {
 	suite.Suite
 	DynamoDBTest
@@ -573,7 +820,22 @@ func TestTable(t *testing.T) {
 	}
 	suite.Run(t, new(TableSuite))
 	suite.Run(t, new(TableGSISuite))
+	suite.Run(t, new(ScanSuite))
+	suite.Run(t, new(QuerySuite))
+}
+
+func TestQuery(t *testing.T) {
+	if !*integration {
+		t.Skip("Test against amazon not enabled.")
+	}
+	suite.Run(t, new(QuerySuite))
+	suite.Run(t, new(QueryOnIndexSuite))
+}
+
+func TestItem(t *testing.T) {
+	if !*integration {
+		t.Skip("Test against amazon not enabled.")
+	}
 	suite.Run(t, new(ItemSuite))
 	suite.Run(t, &ItemSuite{WithRange: true})
-	suite.Run(t, new(ScanSuite))
 }

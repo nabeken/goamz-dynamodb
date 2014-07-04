@@ -410,6 +410,544 @@ func (s *QueryBuilderSuite) TestAddKeyConditions() {
 	assert.Equal(s.T(), queryJson, expectedJson)
 }
 
+func TestDeleteItemQuery_Least(t *testing.T) {
+	expectedJSON := []byte(`
+{
+  "Key": {
+    "DELETE_ITEM_QUERY_KEY": {
+      "S": "STRING"
+    }
+  },
+  "TableName": "DELETE_ITEM_QUERY_TABLE"
+}
+`)
+	q := dynamodb.DeleteItemQuery{
+		Key: map[string]dynamodb.AttributeValue{
+			"DELETE_ITEM_QUERY_KEY": dynamodb.AttributeValue{
+				Type: dynamodb.TypeString,
+				Data: []dynamodb.AttributeData{"STRING"},
+			},
+		},
+		TableName: "DELETE_ITEM_QUERY_TABLE",
+	}
+	expectedQuery := dynamodb.DeleteItemQuery{}
+	if assert.NoError(t, json.Unmarshal(expectedJSON, &expectedQuery)) {
+		assert.Equal(t, q, expectedQuery)
+	}
+}
+
+func TestDeleteItemQuery_Full(t *testing.T) {
+	expectedJSON := []byte(`
+{
+  "ConditionalOperator": "OR",
+  "Expected": {
+    "DELETE_ITEM_QUERY_KEY": {
+      "Value": {
+          "S": "STRING"
+      },
+      "Exists": true
+    },
+    "DELETE_ITEM_QUERY_KEY2": {
+      "Exists": false
+    }
+  },
+  "Key": {
+    "DELETE_ITEM_QUERY_KEY": {
+      "S": "STRING"
+    }
+  },
+  "ReturnConsumedCapacity": "TOTAL",
+  "ReturnItemCollectionMetrics": "NONE",
+  "ReturnValues": "ALL_OLD",
+  "TableName": "DELETE_ITEM_QUERY_TABLE"
+}
+`)
+	q := dynamodb.DeleteItemQuery{
+		ConditionalOperator: dynamodb.CondOpOr,
+		Expected: map[string]dynamodb.DeprecatedCondition{
+			"DELETE_ITEM_QUERY_KEY": dynamodb.DeprecatedCondition{
+				Value: dynamodb.AttributeValue{
+					Type: dynamodb.TypeString,
+					Data: []dynamodb.AttributeData{"STRING"},
+				},
+				Exists: true,
+			},
+			"DELETE_ITEM_QUERY_KEY2": dynamodb.DeprecatedCondition{
+				Exists: false,
+			},
+		},
+		Key: map[string]dynamodb.AttributeValue{
+			"DELETE_ITEM_QUERY_KEY": dynamodb.AttributeValue{
+				Type: dynamodb.TypeString,
+				Data: []dynamodb.AttributeData{"STRING"},
+			},
+		},
+		ReturnConsumedCapacity:      dynamodb.ConsumedCapTotal,
+		ReturnItemCollectionMetrics: dynamodb.ItemCollectionMetricsNone,
+		ReturnValues:                dynamodb.ReturnValuesAllOld,
+		TableName:                   "DELETE_ITEM_QUERY_TABLE",
+	}
+	expectedQuery := dynamodb.DeleteItemQuery{}
+	if assert.NoError(t, json.Unmarshal(expectedJSON, &expectedQuery)) {
+		assert.Equal(t, q, expectedQuery)
+	}
+}
+
+func TestGetItemQuery_Least(t *testing.T) {
+	expectedJSON := []byte(`
+{
+  "Key": {
+    "GET_ITEM_KEY": {
+      "S": "STRING"
+    }
+  },
+  "TableName": "GET_ITEM_TABLE"
+}
+`)
+	q := dynamodb.GetItemQuery{
+		Key: map[string]dynamodb.AttributeValue{
+			"GET_ITEM_KEY": dynamodb.AttributeValue{
+				Type: dynamodb.TypeString,
+				Data: []dynamodb.AttributeData{"STRING"},
+			},
+		},
+		TableName: "GET_ITEM_TABLE",
+	}
+	expectedQuery := dynamodb.GetItemQuery{}
+	if assert.NoError(t, json.Unmarshal(expectedJSON, &expectedQuery)) {
+		assert.Equal(t, q, expectedQuery)
+	}
+}
+
+func TestGetItemQuery_Full(t *testing.T) {
+	expectedJSON := []byte(`
+{
+  "AttributesToGet": [
+    "ATTR1",
+    "ATTR2"
+  ],
+  "ConsistentRead": true,
+  "Key": {
+    "GET_ITEM_KEY": {
+      "S": "STRING"
+    }
+  },
+  "ReturnConsumedCapacity": "TOTAL",
+  "TableName": "GET_ITEM_TABLE"
+}
+`)
+	q := dynamodb.GetItemQuery{
+		AttributesToGet: []string{"ATTR1", "ATTR2"},
+		ConsistentRead:  true,
+		Key: map[string]dynamodb.AttributeValue{
+			"GET_ITEM_KEY": dynamodb.AttributeValue{
+				Type: dynamodb.TypeString,
+				Data: []dynamodb.AttributeData{"STRING"},
+			},
+		},
+		ReturnConsumedCapacity: dynamodb.ConsumedCapTotal,
+		TableName:              "GET_ITEM_TABLE",
+	}
+	expectedQuery := dynamodb.GetItemQuery{}
+	if assert.NoError(t, json.Unmarshal(expectedJSON, &expectedQuery)) {
+		assert.Equal(t, q, expectedQuery)
+	}
+}
+
+func TestPutQuery_Least(t *testing.T) {
+	expectedJSON := []byte(`
+{
+  "Item": {
+    "PUT_ITEM_KEY": {
+      "S": "STRING"
+    }
+  },
+  "TableName": "PUT_ITEM_TABLE"
+}
+`)
+	q := dynamodb.PutItemQuery{
+		Item: map[string]dynamodb.AttributeValue{
+			"PUT_ITEM_KEY": dynamodb.AttributeValue{
+				Type: dynamodb.TypeString,
+				Data: []dynamodb.AttributeData{"STRING"},
+			},
+		},
+		TableName: "PUT_ITEM_TABLE",
+	}
+	expectedQuery := dynamodb.PutItemQuery{}
+	if assert.NoError(t, json.Unmarshal(expectedJSON, &expectedQuery)) {
+		assert.Equal(t, q, expectedQuery)
+	}
+}
+
+func TestPutQuery_Full(t *testing.T) {
+	expectedJSON := []byte(`
+{
+  "ConditionalOperator": "OR",
+  "Expected": {
+    "PUT_ITEM_QUERY_KEY": {
+      "Value": {
+          "S": "STRING"
+      },
+      "Exists": true
+    },
+    "PUT_ITEM_QUERY_KEY2": {
+      "Exists": false
+    }
+  },
+  "Item": {
+    "PUT_ITEM_KEY": {
+      "S": "STRING"
+    }
+  },
+  "ReturnConsumedCapacity": "TOTAL",
+  "ReturnItemCollectionMetrics": "NONE",
+  "ReturnValues": "ALL_OLD",
+  "TableName": "PUT_ITEM_QUERY_TABLE"
+}
+`)
+	q := dynamodb.PutItemQuery{
+		ConditionalOperator: dynamodb.CondOpOr,
+		Expected: map[string]dynamodb.DeprecatedCondition{
+			"PUT_ITEM_QUERY_KEY": dynamodb.DeprecatedCondition{
+				Value: dynamodb.AttributeValue{
+					Type: dynamodb.TypeString,
+					Data: []dynamodb.AttributeData{"STRING"},
+				},
+				Exists: true,
+			},
+			"PUT_ITEM_QUERY_KEY2": dynamodb.DeprecatedCondition{
+				Exists: false,
+			},
+		},
+		Item: map[string]dynamodb.AttributeValue{
+			"PUT_ITEM_KEY": dynamodb.AttributeValue{
+				Type: dynamodb.TypeString,
+				Data: []dynamodb.AttributeData{"STRING"},
+			},
+		},
+		ReturnConsumedCapacity:      dynamodb.ConsumedCapTotal,
+		ReturnItemCollectionMetrics: dynamodb.ItemCollectionMetricsNone,
+		ReturnValues:                dynamodb.ReturnValuesAllOld,
+		TableName:                   "PUT_ITEM_QUERY_TABLE",
+	}
+	expectedQuery := dynamodb.PutItemQuery{}
+	if assert.NoError(t, json.Unmarshal(expectedJSON, &expectedQuery)) {
+		assert.Equal(t, q, expectedQuery)
+	}
+}
+
+func TestQuery_Least(t *testing.T) {
+	expectedJSON := []byte(`
+{
+  "KeyConditions": {
+    "QUERY_KEY": {
+      "AttributeValueList": [
+        {
+          "S": "STRING"
+        }
+      ],
+      "ComparisonOperator": "EQ"
+    }
+  },
+  "TableName": "QUERY_TABLE"
+}
+`)
+	q := dynamodb.QueryQuery{
+		KeyConditions: map[string]dynamodb.Condition{
+			"QUERY_KEY": dynamodb.Condition{
+				AttributeValueList: []dynamodb.AttributeValue{
+					dynamodb.AttributeValue{
+						Type: dynamodb.TypeString,
+						Data: []dynamodb.AttributeData{"STRING"},
+					},
+				},
+				ComparisonOperator: dynamodb.CmpOpEQ,
+			},
+		},
+		TableName: "QUERY_TABLE",
+	}
+	expectedQuery := dynamodb.QueryQuery{}
+	if assert.NoError(t, json.Unmarshal(expectedJSON, &expectedQuery)) {
+		assert.Equal(t, q, expectedQuery)
+	}
+}
+
+func TestQuery_Full(t *testing.T) {
+	expectedJSON := []byte(`
+{
+  "AttributesToGet": [
+    "ATTR1",
+    "ATTR2"
+  ],
+  "ConditionalOperator": "AND",
+  "ConsistentRead": true,
+  "ExclusiveStartKey": {
+    "START": {
+      "N": "123456789"
+    }
+  },
+  "IndexName": "MYGSI",
+  "KeyConditions": {
+    "QUERY_KEY": {
+      "AttributeValueList": [
+        {
+          "S": "STRING"
+        }
+      ],
+      "ComparisonOperator": "EQ"
+    }
+  },
+  "Limit": 100,
+  "QueryFilter": {
+    "QUERY_KEY": {
+      "AttributeValueList": [
+        {
+          "S": "STRING"
+        }
+      ],
+      "ComparisonOperator": "EQ"
+    }
+  },
+  "ReturnConsumedCapacity": "TOTAL",
+  "ScanIndexForward": true,
+  "Select": "COUNT",
+  "TableName": "QUERY_TABLE"
+}
+`)
+	q := dynamodb.QueryQuery{
+		AttributesToGet:     []string{"ATTR1", "ATTR2"},
+		ConditionalOperator: dynamodb.CondOpAnd,
+		ConsistentRead:      true,
+		ExclusiveStartKey: map[string]dynamodb.AttributeValue{
+			"START": dynamodb.AttributeValue{
+				Type: dynamodb.TypeNumber,
+				Data: []dynamodb.AttributeData{"123456789"},
+			},
+		},
+		IndexName: "MYGSI",
+		KeyConditions: map[string]dynamodb.Condition{
+			"QUERY_KEY": dynamodb.Condition{
+				AttributeValueList: []dynamodb.AttributeValue{
+					dynamodb.AttributeValue{
+						Type: dynamodb.TypeString,
+						Data: []dynamodb.AttributeData{"STRING"},
+					},
+				},
+				ComparisonOperator: dynamodb.CmpOpEQ,
+			},
+		},
+		Limit: 100,
+		QueryFilter: map[string]dynamodb.Condition{
+			"QUERY_KEY": dynamodb.Condition{
+				AttributeValueList: []dynamodb.AttributeValue{
+					dynamodb.AttributeValue{
+						Type: dynamodb.TypeString,
+						Data: []dynamodb.AttributeData{"STRING"},
+					},
+				},
+				ComparisonOperator: dynamodb.CmpOpEQ,
+			},
+		},
+		ReturnConsumedCapacity: dynamodb.ConsumedCapTotal,
+		ScanIndexForward:       true,
+		Select:                 dynamodb.SelectCount,
+		TableName:              "QUERY_TABLE",
+	}
+	expectedQuery := dynamodb.QueryQuery{}
+	if assert.NoError(t, json.Unmarshal(expectedJSON, &expectedQuery)) {
+		assert.Equal(t, q, expectedQuery)
+	}
+}
+
+func TestScan_Least(t *testing.T) {
+	expectedJSON := []byte(`
+{
+  "TableName": "SCAN_TABLE"
+}
+`)
+	q := dynamodb.ScanQuery{
+		TableName: "SCAN_TABLE",
+	}
+	expectedQuery := dynamodb.ScanQuery{}
+	if assert.NoError(t, json.Unmarshal(expectedJSON, &expectedQuery)) {
+		assert.Equal(t, q, expectedQuery)
+	}
+}
+
+func TestScan_Full(t *testing.T) {
+	expectedJSON := []byte(`
+{
+  "AttributesToGet": [
+    "ATTR1",
+    "ATTR2"
+  ],
+  "ConditionalOperator": "AND",
+  "ExclusiveStartKey": {
+    "START": {
+      "N": "123456789"
+    }
+  },
+  "Limit": 100,
+  "ReturnConsumedCapacity": "TOTAL",
+  "ScanFilter": {
+    "QUERY_KEY": {
+      "AttributeValueList": [
+        {
+          "S": "STRING"
+        }
+      ],
+      "ComparisonOperator": "EQ"
+    }
+  },
+  "Segment": 1,
+  "Select": "COUNT",
+  "TableName": "QUERY_TABLE",
+  "TotalSegments": 100
+}
+`)
+	q := dynamodb.ScanQuery{
+		AttributesToGet:     []string{"ATTR1", "ATTR2"},
+		ConditionalOperator: dynamodb.CondOpAnd,
+		ExclusiveStartKey: map[string]dynamodb.AttributeValue{
+			"START": dynamodb.AttributeValue{
+				Type: dynamodb.TypeNumber,
+				Data: []dynamodb.AttributeData{"123456789"},
+			},
+		},
+		Limit: 100,
+		ReturnConsumedCapacity: dynamodb.ConsumedCapTotal,
+		ScanFilter: map[string]dynamodb.Condition{
+			"QUERY_KEY": dynamodb.Condition{
+				AttributeValueList: []dynamodb.AttributeValue{
+					dynamodb.AttributeValue{
+						Type: dynamodb.TypeString,
+						Data: []dynamodb.AttributeData{"STRING"},
+					},
+				},
+				ComparisonOperator: dynamodb.CmpOpEQ,
+			},
+		},
+		Segment:       1,
+		Select:        dynamodb.SelectCount,
+		TableName:     "QUERY_TABLE",
+		TotalSegments: 100,
+	}
+	expectedQuery := dynamodb.ScanQuery{}
+	if assert.NoError(t, json.Unmarshal(expectedJSON, &expectedQuery)) {
+		assert.Equal(t, q, expectedQuery)
+	}
+}
+
+func TestUpdateItemQuery_Least(t *testing.T) {
+	expectedJSON := []byte(`
+{
+  "Key": {
+    "UPDATE_ITEM_KEY": {
+      "S": "STRING"
+    }
+  },
+  "TableName": "UPDATE_ITEM_TABLE"
+}
+`)
+	q := dynamodb.UpdateItemQuery{
+		Key: map[string]dynamodb.AttributeValue{
+			"UPDATE_ITEM_KEY": dynamodb.AttributeValue{
+				Type: dynamodb.TypeString,
+				Data: []dynamodb.AttributeData{"STRING"},
+			},
+		},
+		TableName: "UPDATE_ITEM_TABLE",
+	}
+	expectedQuery := dynamodb.UpdateItemQuery{}
+	if assert.NoError(t, json.Unmarshal(expectedJSON, &expectedQuery)) {
+		assert.Equal(t, q, expectedQuery)
+	}
+}
+
+func TestUpdateItemQuery_Full(t *testing.T) {
+	expectedJSON := []byte(`
+{
+  "AttributeUpdates": {
+    "ATTR1": {
+      "Action": "PUT",
+      "Value": {
+        "S": "STRING"
+      }
+    },
+    "ATTR2": {
+      "Action": "DELETE"
+    }
+  },
+  "ConditionalOperator": "OR",
+  "Expected": {
+    "UPDATE_ITEM_QUERY_KEY2": {
+      "Exists": false
+    },
+    "UPDATE_ITEM_QUERY_KEY": {
+      "Value": {
+          "SS": [
+            "STRING1",
+            "STRING2"
+          ]
+       },
+      "Exists": true
+    }
+  },
+  "Key": {
+    "UPDATE_ITEM_KEY": {
+      "S": "STRING"
+    }
+  },
+  "ReturnConsumedCapacity": "TOTAL",
+  "ReturnItemCollectionMetrics": "NONE",
+  "ReturnValues": "ALL_OLD",
+  "TableName": "UPDATE_ITEM_TABLE"
+}
+`)
+	q := dynamodb.UpdateItemQuery{
+		AttributeUpdates: map[string]dynamodb.AttributeUpdate{
+			"ATTR1": dynamodb.AttributeUpdate{
+				Action: dynamodb.ActionPut,
+				Value: dynamodb.AttributeValue{
+					Type: dynamodb.TypeString,
+					Data: []dynamodb.AttributeData{"STRING"},
+				},
+			},
+			"ATTR2": dynamodb.AttributeUpdate{
+				Action: dynamodb.ActionDelete,
+			},
+		},
+		ConditionalOperator: dynamodb.CondOpOr,
+		Expected: map[string]dynamodb.DeprecatedCondition{
+			"UPDATE_ITEM_QUERY_KEY": dynamodb.DeprecatedCondition{
+				Value: dynamodb.AttributeValue{
+					Type: dynamodb.TypeStringSet,
+					Data: []dynamodb.AttributeData{"STRING1", "STRING2"},
+				},
+				Exists: true,
+			},
+			"UPDATE_ITEM_QUERY_KEY2": dynamodb.DeprecatedCondition{
+				Exists: false,
+			},
+		},
+		Key: map[string]dynamodb.AttributeValue{
+			"UPDATE_ITEM_KEY": dynamodb.AttributeValue{
+				Type: dynamodb.TypeString,
+				Data: []dynamodb.AttributeData{"STRING"},
+			},
+		},
+		ReturnConsumedCapacity:      dynamodb.ConsumedCapTotal,
+		ReturnItemCollectionMetrics: dynamodb.ItemCollectionMetricsNone,
+		ReturnValues:                dynamodb.ReturnValuesAllOld,
+		TableName:                   "UPDATE_ITEM_TABLE",
+	}
+	expectedQuery := dynamodb.UpdateItemQuery{}
+	if assert.NoError(t, json.Unmarshal(expectedJSON, &expectedQuery)) {
+		assert.Equal(t, q, expectedQuery)
+	}
+}
+
 func TestQueryBuilder(t *testing.T) {
 	suite.Run(t, new(QueryBuilderSuite))
 }

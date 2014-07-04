@@ -39,7 +39,7 @@ func (s *BatchSuite) SetupSuite() {
 
 func (s *BatchSuite) createDummy() {
 	// Create dummy records
-	for i := 0; i < 10; i++ {
+	for i := 0; i < s.numOfRecords; i++ {
 		ai := strconv.Itoa(i)
 		attrs := []dynamodb.Attribute{
 			*dynamodb.NewNumericAttribute("Attr", ai),
@@ -74,6 +74,43 @@ func (s *BatchSuite) TestBatchGet() {
 }
 
 func (s *BatchSuite) TestBatchWrite() {
+	s.createDummy()
+
+	attrs := [][]dynamodb.Attribute{}
+	for i := 0; i < 10; i++ {
+		ai := strconv.Itoa(i)
+		attrs = append(attrs, []dynamodb.Attribute{
+			dynamodb.Attribute{
+				Type:  dynamodb.TYPE_STRING,
+				Name:  "TestHashKey",
+				Value: "HashKeyVal" + ai,
+			},
+			dynamodb.Attribute{
+				Type:  dynamodb.TYPE_NUMBER,
+				Name:  "TestRangeKey",
+				Value: ai,
+			},
+		})
+	}
+
+	b := dynamodb.BatchWriteItem{
+		s.server,
+		map[*dynamodb.Table]map[string][][]dynamodb.Attribute{
+			s.table: map[string][][]dynamodb.Attribute{
+				"Delete": attrs,
+			},
+		},
+	}
+	ret, err := b.Execute()
+	if assert.NoError(s.T(), err) {
+		// No unprocessed item
+		assert.Equal(s.T(), 0, len(ret))
+	}
+
+	scanRet, err := s.table.Scan(nil)
+	if assert.NoError(s.T(), err) {
+		assert.Equal(s.T(), 90, len(scanRet))
+	}
 }
 
 func TestBatch(t *testing.T) {
