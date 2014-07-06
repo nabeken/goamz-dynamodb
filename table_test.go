@@ -104,7 +104,9 @@ func (s *TableGSISuite) TestDescribeTable() {
 type ItemSuite struct {
 	suite.Suite
 	DynamoDBTest
+
 	WithRange bool
+	TableName string
 }
 
 func (s *ItemSuite) SetupSuite() {
@@ -135,6 +137,9 @@ func (s *ItemSuite) SetupSuite() {
 			ReadCapacityUnits:  10,
 			WriteCapacityUnits: 10,
 		},
+	}
+	if s.TableName != "" {
+		s.TableDescription.TableName = s.TableName
 	}
 	s.CreateNewTable = true
 	s.SetupDB(s.T())
@@ -574,6 +579,6 @@ func TestTable(t *testing.T) {
 	suite.Run(t, new(TableSuite))
 	suite.Run(t, new(TableGSISuite))
 	suite.Run(t, new(ItemSuite))
-	suite.Run(t, &ItemSuite{WithRange: true})
+	suite.Run(t, &ItemSuite{WithRange: true, TableName: "DynamoDBTestItemRange"})
 	suite.Run(t, new(ScanSuite))
 }
