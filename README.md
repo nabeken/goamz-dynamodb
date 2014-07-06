@@ -1,13 +1,10 @@
-# GoAMZ-DynamoDB [![Build Status](https://travis-ci.org/nabeken/goamz-dynamodb.png?branch=dev)](https://travis-ci.org/nabeken/goamz-dynamodb)
+# GoAMZ-DynamoDB [![Build Status](https://travis-ci.org/nabeken/goamz-dynamodb.png?branch=v1)](https://travis-ci.org/nabeken/goamz-dynamodb)
 
 GoAMZ-DynamoDB is my experimental project forked from [crowdmob/goamz/dynamodb](https://github.com/crowdmob/goamz/tree/master/dynamodb).
-
-These is no gurantees of API stability for now.
 
 ## API version
 
 - [v1](http://gopkg.in/nabeken/goamz-dynamodb.v1) has the compatibility with `crowdmob/goamz/dynamodb`.
-- [v2](http://gopkg.in/nabeken/goamz-dynamodb.v2) will have breaking changes.
 
 ## Goals
 
@@ -21,7 +18,7 @@ These is no gurantees of API stability for now.
 
 The API documentation is currently available at:
 
-[http://godoc.org/github.com/nabeken/goamz-dynamodb](http://godoc.org/github.com/nabeken/goamz-dynamodb)
+[http://godoc.org/gopkg.in/nabeken/goamz-dynamodb.v1](http://godoc.org/gopkg.in/nabeken/goamz-dynamodb.v1)
 
 ## Running tests
 
