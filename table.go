@@ -21,37 +21,43 @@ func (t *Table) DescribeTable() (*TableDescription, error) {
 }
 
 func (t *Table) Query(attributeComparisons []AttributeComparison) ([]map[string]*Attribute, error) {
-	q := NewQuery(t)
-	q.AddKeyConditions(attributeComparisons)
-	return runQuery(q, t)
+	return runQuery(t, QueryQuery{
+		TableName:     t.Name,
+		KeyConditions: buildConditions(attributeComparisons),
+	})
 }
 
 func (t *Table) QueryOnIndex(attributeComparisons []AttributeComparison, indexName string) ([]map[string]*Attribute, error) {
-	q := NewQuery(t)
-	q.AddKeyConditions(attributeComparisons)
-	q.AddIndex(indexName)
-	return runQuery(q, t)
+	return runQuery(t, QueryQuery{
+		TableName:     t.Name,
+		KeyConditions: buildConditions(attributeComparisons),
+		IndexName:     indexName,
+	})
 }
 
 func (t *Table) LimitedQuery(attributeComparisons []AttributeComparison, limit int64) ([]map[string]*Attribute, error) {
-	q := NewQuery(t)
-	q.AddKeyConditions(attributeComparisons)
-	q.AddLimit(limit)
-	return runQuery(q, t)
+	return runQuery(t, QueryQuery{
+		TableName:     t.Name,
+		KeyConditions: buildConditions(attributeComparisons),
+		Limit:         uint(limit),
+	})
 }
 
 func (t *Table) LimitedQueryOnIndex(attributeComparisons []AttributeComparison, indexName string, limit int64) ([]map[string]*Attribute, error) {
-	q := NewQuery(t)
-	q.AddKeyConditions(attributeComparisons)
-	q.AddIndex(indexName)
-	q.AddLimit(limit)
-	return runQuery(q, t)
+	return runQuery(t, QueryQuery{
+		TableName:     t.Name,
+		KeyConditions: buildConditions(attributeComparisons),
+		IndexName:     indexName,
+		Limit:         uint(limit),
+	})
 }
 
 func (t *Table) CountQuery(attributeComparisons []AttributeComparison) (int64, error) {
-	q := NewQuery(t)
-	q.AddKeyConditions(attributeComparisons)
-	q.AddSelect("COUNT")
+	q := QueryQuery{
+		TableName:     t.Name,
+		KeyConditions: buildConditions(attributeComparisons),
+		Select:        SelectCount,
+	}
 	jsonResponse, err := t.Server.queryServer(target("Query"), q)
 	if err != nil {
 		return 0, err
@@ -69,7 +75,7 @@ func (t *Table) CountQuery(attributeComparisons []AttributeComparison) (int64, e
 	return itemCount, nil
 }
 
-func runQuery(q *Query, t *Table) ([]map[string]*Attribute, error) {
+func runQuery(t *Table, q interface{}) ([]map[string]*Attribute, error) {
 	jsonResponse, err := t.Server.queryServer(target("Query"), q)
 	if err != nil {
 		return nil, err
@@ -97,7 +103,7 @@ func runQuery(q *Query, t *Table) ([]map[string]*Attribute, error) {
 	return results, nil
 }
 
-func (t *Table) FetchPartialResults(query *Query) ([]map[string]*Attribute, *Key, error) {
+func (t *Table) FetchPartialResults(query interface{}) ([]map[string]*Attribute, *Key, error) {
 	jsonResponse, err := t.Server.queryServer(target("Scan"), query)
 	if err != nil {
 		return nil, nil, err
@@ -143,36 +149,43 @@ func (t *Table) ParallelScanPartial(attributeComparisons []AttributeComparison, 
 }
 
 func (t *Table) ParallelScanPartialLimit(attributeComparisons []AttributeComparison, exclusiveStartKey *Key, segment, totalSegments int, limit int64) ([]map[string]*Attribute, *Key, error) {
-	q := NewQuery(t)
-	q.AddScanFilter(attributeComparisons)
+	q := ScanQuery{
+		ScanFilter: buildConditions(attributeComparisons),
+		TableName:  t.Name,
+	}
+
 	if exclusiveStartKey != nil {
-		q.AddExclusiveStartKey(t, exclusiveStartKey)
+		q.ExclusiveStartKey = buildAttributeValueFromKey(t, exclusiveStartKey)
 	}
 	if totalSegments > 0 {
-		q.AddParallelScanConfiguration(segment, totalSegments)
+		q.TotalSegments = uint(totalSegments)
+		q.Segment = uint(segment)
 	}
 	if limit > 0 {
-		q.AddLimit(limit)
+		q.Limit = uint(limit)
 	}
 	return t.FetchPartialResults(q)
 }
 
-func (t *Table) FetchResults(query *Query) ([]map[string]*Attribute, error) {
+func (t *Table) FetchResults(query interface{}) ([]map[string]*Attribute, error) {
 	results, _, err := t.FetchPartialResults(query)
 	return results, err
 }
 
 func (t *Table) Scan(attributeComparisons []AttributeComparison) ([]map[string]*Attribute, error) {
-	q := NewQuery(t)
-	q.AddScanFilter(attributeComparisons)
-	return t.FetchResults(q)
+	return t.FetchResults(ScanQuery{
+		ScanFilter: buildConditions(attributeComparisons),
+		TableName:  t.Name,
+	})
 }
 
 func (t *Table) ParallelScan(attributeComparisons []AttributeComparison, segment int, totalSegments int) ([]map[string]*Attribute, error) {
-	q := NewQuery(t)
-	q.AddScanFilter(attributeComparisons)
-	q.AddParallelScanConfiguration(segment, totalSegments)
-	return t.FetchResults(q)
+	return t.FetchResults(ScanQuery{
+		ScanFilter:    buildConditions(attributeComparisons),
+		Segment:       uint(segment),
+		TableName:     t.Name,
+		TotalSegments: uint(totalSegments),
+	})
 }
 
 func (t *Table) BatchGetItems(keys []Key) *BatchGetItem {
@@ -191,11 +204,10 @@ func (t *Table) GetItemConsistent(key *Key, consistentRead bool) (map[string]*At
 }
 
 func (t *Table) getItem(key *Key, consistentRead bool) (map[string]*Attribute, error) {
-	q := NewQuery(t)
-	q.AddKey(t, key)
-
-	if consistentRead {
-		q.ConsistentRead(consistentRead)
+	q := GetItemQuery{
+		ConsistentRead: consistentRead,
+		Key:            buildAttributeValueFromKey(t, key),
+		TableName:      t.Name,
 	}
 
 	jsonResponse, err := t.Server.queryServer(target("GetItem"), q)
@@ -236,14 +248,16 @@ func (t *Table) putItem(hashKey, rangeKey string, attributes, expected []Attribu
 		return false, ErrAtLeastOneAttributeRequired
 	}
 
-	q := NewQuery(t)
-
 	keys := t.Key.Clone(hashKey, rangeKey)
 	attributes = append(attributes, keys...)
 
-	q.AddItem(attributes)
+	q := PutItemQuery{
+		Item:      buildAttributeValueFromAttributes(attributes),
+		TableName: t.Name,
+	}
+
 	if expected != nil {
-		q.AddExpected(expected)
+		q.Expected = buildDeprecatedConditions(expected)
 	}
 
 	jsonResponse, err := t.Server.queryServer(target("PutItem"), q)
@@ -261,11 +275,13 @@ func (t *Table) putItem(hashKey, rangeKey string, attributes, expected []Attribu
 }
 
 func (t *Table) deleteItem(key *Key, expected []Attribute) (bool, error) {
-	q := NewQuery(t)
-	q.AddKey(t, key)
+	q := DeleteItemQuery{
+		Key:       buildAttributeValueFromKey(t, key),
+		TableName: t.Name,
+	}
 
 	if expected != nil {
-		q.AddExpected(expected)
+		q.Expected = buildDeprecatedConditions(expected)
 	}
 
 	jsonResponse, err := t.Server.queryServer(target("DeleteItem"), q)
@@ -320,12 +336,15 @@ func (t *Table) modifyAttributes(key *Key, attributes, expected []Attribute, act
 		return false, ErrAtLeastOneAttributeRequired
 	}
 
-	q := NewQuery(t)
-	q.AddKey(t, key)
-	q.AddUpdates(attributes, action)
+	q := UpdateItemQuery{
+		Key:       buildAttributeValueFromKey(t, key),
+		TableName: t.Name,
+	}
+
+	q.AttributeUpdates = buildAttributeUpdates(action, attributes)
 
 	if expected != nil {
-		q.AddExpected(expected)
+		q.Expected = buildDeprecatedConditions(expected)
 	}
 
 	jsonResponse, err := t.Server.queryServer(target("UpdateItem"), q)

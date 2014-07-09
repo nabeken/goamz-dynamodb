@@ -1,6 +1,7 @@
 package dynamodb
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -178,9 +179,12 @@ func NewError(r *http.Response, jsonBody []byte) error {
 	return ddbError
 }
 
-func (s *Server) queryServer(target string, query *Query) ([]byte, error) {
-	data := strings.NewReader(query.String())
-	hreq, err := http.NewRequest("POST", s.Region.DynamoDBEndpoint+"/", data)
+func (s *Server) queryServer(target string, query interface{}) ([]byte, error) {
+	j, jerr := json.Marshal(query)
+	if jerr != nil {
+		return nil, jerr
+	}
+	hreq, err := http.NewRequest("POST", s.Region.DynamoDBEndpoint+"/", bytes.NewReader(j))
 	if err != nil {
 		return nil, err
 	}

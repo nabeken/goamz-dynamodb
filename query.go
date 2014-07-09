@@ -7,6 +7,79 @@ import (
 
 type msi map[string]interface{}
 
+type BatchGetItemQuery struct {
+	RequestItem            map[string]KeysAndAttributes
+	ReturnConsumedCapacity ConsumedCapacity
+}
+
+type DeleteItemQuery struct {
+	ConditionalOperator         ConditionalOperator            `json:",omitempty"`
+	Expected                    map[string]DeprecatedCondition `json:",omitempty"`
+	Key                         map[string]AttributeValue
+	ReturnConsumedCapacity      ConsumedCapacity      `json:",omitempty"`
+	ReturnItemCollectionMetrics ItemCollectionMetrics `json:",omitempty"`
+	ReturnValues                ReturnValues          `json:",omitempty"`
+	TableName                   string
+}
+
+type GetItemQuery struct {
+	AttributesToGet        []string `json:",omitempty"`
+	ConsistentRead         bool     `json:",omitempty"`
+	Key                    map[string]AttributeValue
+	ReturnConsumedCapacity ConsumedCapacity `json:",omitempty"`
+	TableName              string
+}
+
+type PutItemQuery struct {
+	ConditionalOperator ConditionalOperator `json:",omitempty"`
+	//Expected                    map[string]Condition `json:",omitempty"`
+	Expected                    map[string]DeprecatedCondition `json:",omitempty"`
+	Item                        map[string]AttributeValue
+	ReturnConsumedCapacity      ConsumedCapacity      `json:",omitempty"`
+	ReturnItemCollectionMetrics ItemCollectionMetrics `json:",omitempty"`
+	ReturnValues                ReturnValues          `json:",omitempty"`
+	TableName                   string
+}
+
+type QueryQuery struct {
+	AttributesToGet        []string                  `json:",omitempty"`
+	ConditionalOperator    ConditionalOperator       `json:",omitempty"`
+	ConsistentRead         bool                      `json:",omitempty"`
+	ExclusiveStartKey      map[string]AttributeValue `json:",omitempty"`
+	IndexName              string                    `json:",omitempty"`
+	KeyConditions          map[string]Condition
+	Limit                  uint                 `json:",omitempty"`
+	QueryFilter            map[string]Condition `json:",omitempty"`
+	ReturnConsumedCapacity ConsumedCapacity     `json:",omitempty"`
+	ScanIndexForward       bool                 `json:",omitempty"`
+	Select                 Select               `json:",omitempty"`
+	TableName              string
+}
+
+type ScanQuery struct {
+	AttributesToGet        []string                  `json:",omitempty"`
+	ConditionalOperator    ConditionalOperator       `json:",omitempty"`
+	ExclusiveStartKey      map[string]AttributeValue `json:",omitempty"`
+	Limit                  uint                      `json:",omitempty"`
+	ReturnConsumedCapacity ConsumedCapacity          `json:",omitempty"`
+	ScanFilter             map[string]Condition      `json:",omitempty"`
+	Segment                uint                      `json:",omitempty"`
+	Select                 Select                    `json:",omitempty"`
+	TableName              string
+	TotalSegments          uint `json:",omitempty"`
+}
+
+type UpdateItemQuery struct {
+	AttributeUpdates            map[string]AttributeUpdate     `json:",omitempty"`
+	ConditionalOperator         ConditionalOperator            `json:",omitempty"`
+	Expected                    map[string]DeprecatedCondition `json:",omitempty"`
+	Key                         map[string]AttributeValue
+	ReturnConsumedCapacity      ConsumedCapacity      `json:",omitempty"`
+	ReturnItemCollectionMetrics ItemCollectionMetrics `json:",omitempty"`
+	ReturnValues                ReturnValues          `json:",omitempty"`
+	TableName                   string
+}
+
 type Query struct {
 	buffer msi
 }
@@ -220,6 +293,10 @@ func (q *Query) String() string {
 	return string(bytes)
 }
 
+func (q *Query) MarshalJSON() ([]byte, error) {
+	return json.Marshal(q.buffer)
+}
+
 func (q *Query) addTable(t *Table) {
 	q.addTableByName(t.Name)
 }
@@ -263,4 +340,133 @@ func buildComparisons(comparisons []AttributeComparison) msi {
 	}
 
 	return out
+}
+
+/* Adapters for new Query structures */
+func buildConditions(attributeComparisons []AttributeComparison) map[string]Condition {
+	c := map[string]Condition{}
+	for i := range attributeComparisons {
+		avl := []AttributeValue{}
+		for k := range attributeComparisons[i].AttributeValueList {
+			if attributeComparisons[i].AttributeValueList[k].SetType() {
+				avd := []AttributeData{}
+				for x := range attributeComparisons[i].AttributeValueList[k].SetValues {
+					avd = append(avd, AttributeData(
+						attributeComparisons[i].AttributeValueList[k].SetValues[x]))
+				}
+				avl = append(avl, AttributeValue{
+					Type: AttributeType(attributeComparisons[i].AttributeValueList[k].Type),
+					Data: avd,
+				})
+			} else {
+				avl = append(avl, AttributeValue{
+					Type: AttributeType(attributeComparisons[i].AttributeValueList[k].Type),
+					Data: []AttributeData{
+						AttributeData(attributeComparisons[i].AttributeValueList[k].Value),
+					},
+				})
+			}
+		}
+
+		c[attributeComparisons[i].AttributeName] = Condition{
+			AttributeValueList: avl,
+			ComparisonOperator: ComparisonOperator(attributeComparisons[i].ComparisonOperator),
+		}
+	}
+	return c
+}
+
+func buildDeprecatedConditions(expected []Attribute) map[string]DeprecatedCondition {
+	e := map[string]DeprecatedCondition{}
+	for i := range expected {
+		var c DeprecatedCondition
+		if expected[i].SetType() {
+			ad := []AttributeData{}
+			for i := range expected[i].SetValues {
+				ad = append(ad, AttributeData(expected[i].SetValues[i]))
+			}
+			c = DeprecatedCondition{
+				Value: AttributeValue{
+					Type: AttributeType(expected[i].Type),
+					Data: ad,
+				},
+			}
+		} else {
+			c = DeprecatedCondition{
+				Value: AttributeValue{
+					Type: AttributeType(expected[i].Type),
+					Data: []AttributeData{AttributeData(expected[i].Value)},
+				},
+			}
+		}
+		c.Exists = expected[i].Exists
+		e[expected[i].Name] = c
+	}
+	return e
+}
+
+func buildAttributeValueFromKey(t *Table, key *Key) map[string]AttributeValue {
+	k := map[string]AttributeValue{
+		t.Key.KeyAttribute.Name: AttributeValue{
+			Type: AttributeType(t.Key.KeyAttribute.Type),
+			Data: []AttributeData{AttributeData(key.HashKey)},
+		},
+	}
+	if t.Key.HasRange() {
+		k[t.Key.RangeAttribute.Name] = AttributeValue{
+			Type: AttributeType(t.Key.RangeAttribute.Type),
+			Data: []AttributeData{AttributeData(key.RangeKey)},
+		}
+	}
+	return k
+}
+
+func buildAttributeValueFromAttributes(attributes []Attribute) map[string]AttributeValue {
+	items := map[string]AttributeValue{}
+	for i := range attributes {
+		if attributes[i].SetType() {
+			ad := []AttributeData{}
+			for si := range attributes[i].SetValues {
+				ad = append(ad, AttributeData(attributes[i].SetValues[si]))
+			}
+			items[attributes[i].Name] = AttributeValue{
+				Type: AttributeType(attributes[i].Type),
+				Data: ad,
+			}
+		} else {
+			items[attributes[i].Name] = AttributeValue{
+				Type: AttributeType(attributes[i].Type),
+				Data: []AttributeData{AttributeData(attributes[i].Value)},
+			}
+		}
+	}
+	return items
+}
+
+func buildAttributeUpdates(action string, attributes []Attribute) map[string]AttributeUpdate {
+	items := map[string]AttributeUpdate{}
+	for i := range attributes {
+		if attributes[i].SetType() {
+			ad := []AttributeData{}
+			for si := range attributes[i].SetValues {
+				ad = append(ad, AttributeData(attributes[i].SetValues[si]))
+			}
+			items[attributes[i].Name] = AttributeUpdate{
+				Action: UpdateAction(action),
+				Value: AttributeValue{
+					Type: AttributeType(attributes[i].Type),
+					Data: ad,
+				},
+			}
+		} else {
+			items[attributes[i].Name] = AttributeUpdate{
+				Action: UpdateAction(action),
+				Value: AttributeValue{
+					Type: AttributeType(attributes[i].Type),
+					Data: []AttributeData{AttributeData(attributes[i].Value)},
+				},
+			}
+		}
+	}
+	return items
 }
