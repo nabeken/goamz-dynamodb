@@ -39,25 +39,37 @@ type Projection struct {
 
 type GlobalSecondaryIndex struct {
 	IndexName             string
-	IndexSizeBytes        int64
-	ItemCount             int64
 	KeySchema             []KeySchema
 	Projection            Projection
 	ProvisionedThroughput ProvisionedThroughput
+
+	IndexSizeBytes int64 `json:",omitempty"`
+	ItemCount      int64 `json:",omitempty"`
+}
+
+type GlobalSecondaryIndexAction struct {
+	IndexName             string
+	ProvisionedThroughput ProvisionedThroughput
+}
+
+type GlobalSecondaryIndexUpdate struct {
+	Update GlobalSecondaryIndexAction
 }
 
 type LocalSecondaryIndex struct {
-	IndexName      string
-	IndexSizeBytes int64
-	ItemCount      int64
-	KeySchema      []KeySchema
-	Projection     Projection
+	IndexName  string
+	KeySchema  []KeySchema
+	Projection Projection
+
+	IndexSizeBytes int64 `json:",omitempty"`
+	ItemCount      int64 `json:",omitempty"`
 }
 
 type ProvisionedThroughput struct {
-	NumberOfDecreasesToday int64
-	ReadCapacityUnits      int64
-	WriteCapacityUnits     int64
+	ReadCapacityUnits  int64
+	WriteCapacityUnits int64
+
+	NumberOfDecreasesToday int64 `json:",omitempty"`
 }
 
 type TableDescription struct {

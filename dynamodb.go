@@ -36,7 +36,7 @@ func (s *Server) NewTable(name string, key PrimaryKey) *Table {
 func (s *Server) ListTables() ([]string, error) {
 	var tables []string
 
-	query := NewEmptyQuery()
+	query := ListTablesQuery{}
 
 	jsonResponse, err := s.queryServer(target("ListTables"), query)
 
@@ -65,9 +65,32 @@ func (s *Server) ListTables() ([]string, error) {
 	return tables, nil
 }
 
+func (s *Server) UpdateTable(query UpdateTableQuery) (string, error) {
+	jsonResponse, err := s.queryServer(target("UpdateTable"), query)
+	if err != nil {
+		return "", err
+	}
+
+	json, err := simplejson.NewJson(jsonResponse)
+	if err != nil {
+		return "", err
+	}
+	return json.Get("TableDescription").Get("TableStatus").MustString(), nil
+}
+
 func (s *Server) CreateTable(tableDescription TableDescription) (string, error) {
-	query := NewEmptyQuery()
-	query.AddCreateRequestTable(tableDescription)
+	query := CreateTableQuery{
+		AttributeDefinitions:  tableDescription.AttributeDefinitions,
+		KeySchema:             tableDescription.KeySchema,
+		ProvisionedThroughput: tableDescription.ProvisionedThroughput,
+		TableName:             tableDescription.TableName,
+	}
+	if len(tableDescription.GlobalSecondaryIndexes) > 0 {
+		query.GlobalSecondaryIndexes = tableDescription.GlobalSecondaryIndexes
+	}
+	if len(tableDescription.LocalSecondaryIndexes) > 0 {
+		query.LocalSecondaryIndexes = tableDescription.LocalSecondaryIndexes
+	}
 
 	jsonResponse, err := s.queryServer(target("CreateTable"), query)
 	if err != nil {
@@ -83,8 +106,9 @@ func (s *Server) CreateTable(tableDescription TableDescription) (string, error) 
 }
 
 func (s *Server) DeleteTable(tableDescription TableDescription) (string, error) {
-	query := NewEmptyQuery()
-	query.AddDeleteRequestTable(tableDescription)
+	query := DeleteTableQuery{
+		TableName: tableDescription.TableName,
+	}
 
 	jsonResponse, err := s.queryServer(target("DeleteTable"), query)
 	if err != nil {
@@ -100,8 +124,9 @@ func (s *Server) DeleteTable(tableDescription TableDescription) (string, error) 
 }
 
 func (s *Server) DescribeTable(name string) (*TableDescription, error) {
-	q := NewEmptyQuery()
-	q.addTableByName(name)
+	q := DescribeTableQuery{
+		TableName: name,
+	}
 
 	jsonResponse, err := s.queryServer(target("DescribeTable"), q)
 	if err != nil {

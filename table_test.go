@@ -3,6 +3,7 @@ package dynamodb_test
 import (
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/nabeken/goamz-dynamodb"
 	"github.com/stretchr/testify/assert"
@@ -61,8 +62,8 @@ func (s *TableGSISuite) SetupSuite() {
 			dynamodb.KeySchema{"OSType", "RANGE"},
 		},
 		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
-			ReadCapacityUnits:  1,
-			WriteCapacityUnits: 1,
+			ReadCapacityUnits:  5,
+			WriteCapacityUnits: 5,
 		},
 		GlobalSecondaryIndexes: []dynamodb.GlobalSecondaryIndex{
 			dynamodb.GlobalSecondaryIndex{
@@ -74,8 +75,8 @@ func (s *TableGSISuite) SetupSuite() {
 					ProjectionType: "KEYS_ONLY",
 				},
 				ProvisionedThroughput: dynamodb.ProvisionedThroughput{
-					ReadCapacityUnits:  1,
-					WriteCapacityUnits: 1,
+					ReadCapacityUnits:  5,
+					WriteCapacityUnits: 5,
 				},
 			},
 		},
@@ -98,6 +99,56 @@ func (s *TableGSISuite) TestDescribeTable() {
 	td, err := s.server.DescribeTable(s.TableDescription.TableName)
 	if assert.NoError(s.T(), err) {
 		assert.Equal(s.T(), len(td.GlobalSecondaryIndexes), 1)
+	}
+}
+
+func (s *TableGSISuite) TestUpdateTable() {
+	_, err := s.server.UpdateTable(dynamodb.UpdateTableQuery{
+		GlobalSecondaryIndexUpdates: []dynamodb.GlobalSecondaryIndexUpdate{
+			dynamodb.GlobalSecondaryIndexUpdate{
+				Update: dynamodb.GlobalSecondaryIndexAction{
+					IndexName: "IMSIIndex",
+					ProvisionedThroughput: dynamodb.ProvisionedThroughput{
+						ReadCapacityUnits:  10,
+						WriteCapacityUnits: 10,
+					},
+				},
+			},
+		},
+		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
+			ReadCapacityUnits:  10,
+			WriteCapacityUnits: 10,
+		},
+		TableName: s.TableDescription.TableName,
+	})
+	if assert.NoError(s.T(), err) {
+		timeoutChan := time.After(timeout)
+		done := handleAction(func(done chan struct{}) {
+			td, terr := s.server.DescribeTable(s.TableDescription.TableName)
+			if assert.NoError(s.T(), terr) {
+				if td.ProvisionedThroughput.ReadCapacityUnits == 10 &&
+					td.GlobalSecondaryIndexes[0].ProvisionedThroughput.ReadCapacityUnits == 10 {
+					close(done)
+					return
+				}
+			}
+			s.T().Log("Waiting for ProvisionedThroughput updated...")
+			time.Sleep(3 * time.Second)
+		})
+
+		select {
+		case <-done:
+			td, terr := s.server.DescribeTable(s.TableDescription.TableName)
+			if assert.NoError(s.T(), terr) {
+				assert.Equal(s.T(), 10, td.ProvisionedThroughput.ReadCapacityUnits)
+				assert.Equal(s.T(), 10, td.ProvisionedThroughput.WriteCapacityUnits)
+				assert.Equal(s.T(), 10, td.GlobalSecondaryIndexes[0].ProvisionedThroughput.ReadCapacityUnits)
+				assert.Equal(s.T(), 10, td.GlobalSecondaryIndexes[0].ProvisionedThroughput.WriteCapacityUnits)
+			}
+		case <-timeoutChan:
+			close(done)
+			s.T().Errorf("Expect ProvisionedThroughput to be changed, but timed out")
+		}
 	}
 }
 
@@ -825,8 +876,13 @@ func TestTable(t *testing.T) {
 	}
 	suite.Run(t, new(TableSuite))
 	suite.Run(t, new(TableGSISuite))
+}
+
+func TestScan(t *testing.T) {
+	if !*integration {
+		t.Skip("Test against amazon not enabled.")
+	}
 	suite.Run(t, new(ScanSuite))
-	suite.Run(t, new(QuerySuite))
 }
 
 func TestQuery(t *testing.T) {
