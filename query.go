@@ -7,6 +7,34 @@ import (
 
 type msi map[string]interface{}
 
+type CreateTableQuery struct {
+	AttributeDefinitions   []AttributeDefinition
+	GlobalSecondaryIndexes []GlobalSecondaryIndex `json:",omitempty"`
+	KeySchema              []KeySchema
+	LocalSecondaryIndexes  []LocalSecondaryIndex `json:",omitempty"`
+	ProvisionedThroughput  ProvisionedThroughput
+	TableName              string
+}
+
+type DeleteTableQuery struct {
+	TableName string
+}
+
+type DescribeTableQuery struct {
+	TableName string
+}
+
+type ListTablesQuery struct {
+	ExclusiveStartTableName string `json:",omitempty"`
+	Limit                   uint   `json:",omitempty"`
+}
+
+type UpdateTableQuery struct {
+	GlobalSecondaryIndexUpdates []GlobalSecondaryIndexUpdate `json:",omitempty"`
+	ProvisionedThroughput       ProvisionedThroughput        `json:",omitempty"`
+	TableName                   string
+}
+
 type BatchGetItemQuery struct {
 	RequestItem            map[string]KeysAndAttributes
 	ReturnConsumedCapacity ConsumedCapacity

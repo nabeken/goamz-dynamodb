@@ -26,7 +26,7 @@ var (
 	dummyAuth = aws.Auth{AccessKey: "DUMMY_KEY", SecretKey: "DUMMY_SECRET"}
 )
 
-type actionHandler func(done chan struct{}) bool
+type actionHandler func(done chan struct{})
 
 func handleAction(action actionHandler) (done chan struct{}) {
 	done = make(chan struct{})
@@ -36,9 +36,7 @@ func handleAction(action actionHandler) (done chan struct{}) {
 			case <-done:
 				return
 			default:
-				if action(done) {
-					return
-				}
+				action(done)
 			}
 		}
 	}()
@@ -118,7 +116,7 @@ func (dt *DynamoDBTest) DeleteTable(t *testing.T) {
 	}
 
 	timeoutChan := time.After(timeout)
-	done := handleAction(func(done chan struct{}) bool {
+	done := handleAction(func(done chan struct{}) {
 		tables, err := dt.server.ListTables()
 		if err != nil {
 			t.Fatal(err)
@@ -126,42 +124,38 @@ func (dt *DynamoDBTest) DeleteTable(t *testing.T) {
 		if findTableByName(tables, dt.TableDescription.TableName) {
 			time.Sleep(5 * time.Second)
 		} else {
-			done <- struct{}{}
-			return true
+			close(done)
 		}
-		return false
 	})
 
 	select {
 	case <-done:
 		break
 	case <-timeoutChan:
-		t.Error("Expect the table to be deleted but timed out")
 		close(done)
+		t.Error("Expect the table to be deleted but timed out")
 	}
 }
 
 func (dt *DynamoDBTest) WaitUntilStatus(t *testing.T, status string) {
 	// We should wait until the table is in specified status because a real DynamoDB has some delay for ready
 	timeoutChan := time.After(timeout)
-	done := handleAction(func(done chan struct{}) bool {
+	done := handleAction(func(done chan struct{}) {
 		desc, err := dt.table.DescribeTable()
 		if err != nil {
 			t.Fatal(err)
 		}
 		if desc.TableStatus == status {
-			done <- struct{}{}
-			return true
+			close(done)
 		}
 		time.Sleep(5 * time.Second)
-		return false
 	})
 	select {
 	case <-done:
 		break
 	case <-timeoutChan:
-		t.Errorf("Expect a status to be %s, but timed out", status)
 		close(done)
+		t.Errorf("Expect a status to be %s, but timed out", status)
 	}
 }
 
