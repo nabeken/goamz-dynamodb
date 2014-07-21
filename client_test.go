@@ -35,16 +35,8 @@ func (s *ClientTestSuite) SetupSuite() {
 		},
 	}
 	s.items = map[string]dynamodb.AttributeValue{
-		"TestHashKey": dynamodb.AttributeValue{
-			Type: dynamodb.TypeString,
-			Data: []dynamodb.AttributeData{
-				dynamodb.AttributeData("HashKeyVal"),
-			},
-		},
-		"TestRangeKey": dynamodb.AttributeValue{
-			Type: dynamodb.TypeNumber,
-			Data: []dynamodb.AttributeData{dynamodb.AttributeData("1")},
-		},
+		"TestHashKey":  dynamodb.NewString("HashKeyVal"),
+		"TestRangeKey": dynamodb.NewNumber(1),
 	}
 	s.CreateNewTable = true
 	s.SetupDB()
@@ -104,12 +96,7 @@ func (s *ClientTestSuite) TestPutUpdateItem() {
 		s.T().Fatal(err)
 	}
 
-	attr := dynamodb.AttributeValue{
-		Type: dynamodb.TypeNumber,
-		Data: []dynamodb.AttributeData{
-			dynamodb.AttributeData("1"),
-		},
-	}
+	attr := dynamodb.NewNumber(1)
 	if err := s.addAttribute("ATTR", attr); err != nil {
 		s.T().Fatal(err)
 	}
@@ -118,12 +105,7 @@ func (s *ClientTestSuite) TestPutUpdateItem() {
 		AttributeUpdates: map[string]dynamodb.AttributeUpdate{
 			"ATTR": dynamodb.AttributeUpdate{
 				Action: dynamodb.ActionAdd,
-				Value: dynamodb.AttributeValue{
-					Type: dynamodb.TypeNumber,
-					Data: []dynamodb.AttributeData{
-						dynamodb.AttributeData("1"),
-					},
-				},
+				Value:  dynamodb.NewNumber(1),
 			},
 		},
 		Key:       s.items,
@@ -297,20 +279,9 @@ func (s *ScanTestSuite) createDummy() {
 	for i := 0; i < s.numOfRecords; i++ {
 		ai := strconv.Itoa(i)
 		items := map[string]dynamodb.AttributeValue{
-			"TestHashKey": dynamodb.AttributeValue{
-				Type: dynamodb.TypeString,
-				Data: []dynamodb.AttributeData{
-					dynamodb.AttributeData("HashKeyVal" + ai),
-				},
-			},
-			"TestRangeKey": dynamodb.AttributeValue{
-				Type: dynamodb.TypeNumber,
-				Data: []dynamodb.AttributeData{dynamodb.AttributeData(ai)},
-			},
-			"Attr": dynamodb.AttributeValue{
-				Type: dynamodb.TypeNumber,
-				Data: []dynamodb.AttributeData{dynamodb.AttributeData(ai)},
-			},
+			"TestHashKey":  dynamodb.NewString("HashKeyVal" + ai),
+			"TestRangeKey": dynamodb.NewNumber(i),
+			"Attr":         dynamodb.NewNumber(i),
 		}
 		pir := &dynamodb.PutItemRequest{
 			Item:      items,
@@ -336,12 +307,7 @@ func (s *ScanTestSuite) TestScanFilter() {
 	sf := dynamodb.ScanFilter{
 		"Attr": dynamodb.Condition{
 			AttributeValueList: []dynamodb.AttributeValue{
-				dynamodb.AttributeValue{
-					Type: dynamodb.TypeNumber,
-					Data: []dynamodb.AttributeData{
-						dynamodb.AttributeData("50"),
-					},
-				},
+				dynamodb.NewNumber(50),
 			},
 			ComparisonOperator: dynamodb.CmpOpGE,
 		},
@@ -394,22 +360,10 @@ func (s *QueryTestSuite) SetupSuite() {
 func (s *QueryTestSuite) createDummy() {
 	// Create dummy records
 	for i := 0; i < s.numOfRecords; i++ {
-		ai := strconv.Itoa(i)
 		items := map[string]dynamodb.AttributeValue{
-			"TestHashKey": dynamodb.AttributeValue{
-				Type: dynamodb.TypeString,
-				Data: []dynamodb.AttributeData{
-					dynamodb.AttributeData("HashKeyVal"),
-				},
-			},
-			"TestRangeKey": dynamodb.AttributeValue{
-				Type: dynamodb.TypeNumber,
-				Data: []dynamodb.AttributeData{dynamodb.AttributeData(ai)},
-			},
-			"Attr": dynamodb.AttributeValue{
-				Type: dynamodb.TypeNumber,
-				Data: []dynamodb.AttributeData{dynamodb.AttributeData(ai)},
-			},
+			"TestHashKey":  dynamodb.NewString("HashKeyVal"),
+			"TestRangeKey": dynamodb.NewNumber(i),
+			"Attr":         dynamodb.NewNumber(i),
 		}
 		pir := &dynamodb.PutItemRequest{
 			Item:      items,
@@ -426,19 +380,13 @@ func (s *QueryTestSuite) TestQuery() {
 	kc := dynamodb.KeyConditions{
 		"TestHashKey": dynamodb.Condition{
 			AttributeValueList: []dynamodb.AttributeValue{
-				dynamodb.AttributeValue{
-					Type: dynamodb.TypeString,
-					Data: []dynamodb.AttributeData{dynamodb.AttributeData("HashKeyVal")},
-				},
+				dynamodb.NewString("HashKeyVal"),
 			},
 			ComparisonOperator: dynamodb.CmpOpEQ,
 		},
 		"TestRangeKey": dynamodb.Condition{
 			AttributeValueList: []dynamodb.AttributeValue{
-				dynamodb.AttributeValue{
-					Type: dynamodb.TypeNumber,
-					Data: []dynamodb.AttributeData{dynamodb.AttributeData("1")},
-				},
+				dynamodb.NewNumber(1),
 			},
 			ComparisonOperator: dynamodb.CmpOpLT,
 		},
@@ -459,10 +407,7 @@ func (s *QueryTestSuite) TestLimitedQuery() {
 	kc := dynamodb.KeyConditions{
 		"TestHashKey": dynamodb.Condition{
 			AttributeValueList: []dynamodb.AttributeValue{
-				dynamodb.AttributeValue{
-					Type: dynamodb.TypeString,
-					Data: []dynamodb.AttributeData{dynamodb.AttributeData("HashKeyVal")},
-				},
+				dynamodb.NewString("HashKeyVal"),
 			},
 			ComparisonOperator: dynamodb.CmpOpEQ,
 		},
@@ -542,27 +487,11 @@ func (s *QueryOnIndexSuite) SetupSuite() {
 func (s *QueryOnIndexSuite) createDummy() {
 	// Create dummy records
 	for i := 0; i < s.numOfRecords; i++ {
-		ai := strconv.Itoa(i)
-
 		items := map[string]dynamodb.AttributeValue{
-			"TestHashKey": dynamodb.AttributeValue{
-				Type: dynamodb.TypeString,
-				Data: []dynamodb.AttributeData{
-					dynamodb.AttributeData("HashKeyVal"),
-				},
-			},
-			"TestRangeKey": dynamodb.AttributeValue{
-				Type: dynamodb.TypeNumber,
-				Data: []dynamodb.AttributeData{dynamodb.AttributeData(ai)},
-			},
-			"GSIKey": dynamodb.AttributeValue{
-				Type: dynamodb.TypeNumber,
-				Data: []dynamodb.AttributeData{dynamodb.AttributeData(ai)},
-			},
-			"LSIKey": dynamodb.AttributeValue{
-				Type: dynamodb.TypeNumber,
-				Data: []dynamodb.AttributeData{dynamodb.AttributeData(ai)},
-			},
+			"TestHashKey":  dynamodb.NewString("HashKeyVal"),
+			"TestRangeKey": dynamodb.NewNumber(i),
+			"GSIKey":       dynamodb.NewNumber(i),
+			"LSIKey":       dynamodb.NewNumber(i),
 		}
 		pir := &dynamodb.PutItemRequest{
 			Item:      items,
@@ -579,12 +508,7 @@ func (s *QueryOnIndexSuite) TestQueryOnIndex() {
 	kc := dynamodb.KeyConditions{
 		"GSIKey": dynamodb.Condition{
 			AttributeValueList: []dynamodb.AttributeValue{
-				dynamodb.AttributeValue{
-					Type: dynamodb.TypeNumber,
-					Data: []dynamodb.AttributeData{
-						dynamodb.AttributeData("80"),
-					},
-				},
+				dynamodb.NewNumber(80),
 			},
 			ComparisonOperator: dynamodb.CmpOpEQ,
 		},
@@ -606,23 +530,13 @@ func (s *QueryOnIndexSuite) TestLimitedQueryOnIndex() {
 	kc := dynamodb.KeyConditions{
 		"TestHashKey": dynamodb.Condition{
 			AttributeValueList: []dynamodb.AttributeValue{
-				dynamodb.AttributeValue{
-					Type: dynamodb.TypeString,
-					Data: []dynamodb.AttributeData{
-						dynamodb.AttributeData("HashKeyVal"),
-					},
-				},
+				dynamodb.NewString("HashKeyVal"),
 			},
 			ComparisonOperator: dynamodb.CmpOpEQ,
 		},
 		"LSIKey": dynamodb.Condition{
 			AttributeValueList: []dynamodb.AttributeValue{
-				dynamodb.AttributeValue{
-					Type: dynamodb.TypeNumber,
-					Data: []dynamodb.AttributeData{
-						dynamodb.AttributeData("10"),
-					},
-				},
+				dynamodb.NewNumber(10),
 			},
 			ComparisonOperator: dynamodb.CmpOpLT,
 		},
@@ -675,20 +589,9 @@ func (s *BatchTestSuite) createDummy() {
 	for i := 0; i < s.numOfRecords; i++ {
 		ai := strconv.Itoa(i)
 		items := map[string]dynamodb.AttributeValue{
-			"TestHashKey": dynamodb.AttributeValue{
-				Type: dynamodb.TypeString,
-				Data: []dynamodb.AttributeData{
-					dynamodb.AttributeData("HashKeyVal" + ai),
-				},
-			},
-			"TestRangeKey": dynamodb.AttributeValue{
-				Type: dynamodb.TypeNumber,
-				Data: []dynamodb.AttributeData{dynamodb.AttributeData(ai)},
-			},
-			"Attr": dynamodb.AttributeValue{
-				Type: dynamodb.TypeNumber,
-				Data: []dynamodb.AttributeData{dynamodb.AttributeData(ai)},
-			},
+			"TestHashKey":  dynamodb.NewString("HashKeyVal" + ai),
+			"TestRangeKey": dynamodb.NewNumber(i),
+			"Attr":         dynamodb.NewNumber(i),
 		}
 		pir := &dynamodb.PutItemRequest{
 			Item:      items,
@@ -707,46 +610,16 @@ func (s *BatchTestSuite) TestBatchGetItem() {
 			s.CreateTableRequest.TableName: dynamodb.KeysAndAttributes{
 				Keys: []map[string]dynamodb.AttributeValue{
 					map[string]dynamodb.AttributeValue{
-						"TestHashKey": dynamodb.AttributeValue{
-							Type: dynamodb.TypeString,
-							Data: []dynamodb.AttributeData{
-								dynamodb.AttributeData("HashKeyVal0"),
-							},
-						},
-						"TestRangeKey": dynamodb.AttributeValue{
-							Type: dynamodb.TypeNumber,
-							Data: []dynamodb.AttributeData{
-								dynamodb.AttributeData("0"),
-							},
-						},
+						"TestHashKey":  dynamodb.NewString("HashKeyVal0"),
+						"TestRangeKey": dynamodb.NewNumber(0),
 					},
 					map[string]dynamodb.AttributeValue{
-						"TestHashKey": dynamodb.AttributeValue{
-							Type: dynamodb.TypeString,
-							Data: []dynamodb.AttributeData{
-								dynamodb.AttributeData("HashKeyVal1"),
-							},
-						},
-						"TestRangeKey": dynamodb.AttributeValue{
-							Type: dynamodb.TypeNumber,
-							Data: []dynamodb.AttributeData{
-								dynamodb.AttributeData("1"),
-							},
-						},
+						"TestHashKey":  dynamodb.NewString("HashKeyVal1"),
+						"TestRangeKey": dynamodb.NewNumber(1),
 					},
 					map[string]dynamodb.AttributeValue{
-						"TestHashKey": dynamodb.AttributeValue{
-							Type: dynamodb.TypeString,
-							Data: []dynamodb.AttributeData{
-								dynamodb.AttributeData("HashKeyVal2"),
-							},
-						},
-						"TestRangeKey": dynamodb.AttributeValue{
-							Type: dynamodb.TypeNumber,
-							Data: []dynamodb.AttributeData{
-								dynamodb.AttributeData("2"),
-							},
-						},
+						"TestHashKey":  dynamodb.NewString("HashKeyVal2"),
+						"TestRangeKey": dynamodb.NewNumber(2),
 					},
 				},
 			},
@@ -773,18 +646,8 @@ func (s *BatchTestSuite) TestBatchWrite() {
 		wr = append(wr, dynamodb.WriteRequest{
 			DeleteRequest: dynamodb.DeleteRequest{
 				Key: map[string]dynamodb.AttributeValue{
-					"TestHashKey": dynamodb.AttributeValue{
-						Type: dynamodb.TypeString,
-						Data: []dynamodb.AttributeData{
-							dynamodb.AttributeData("HashKeyVal" + ai),
-						},
-					},
-					"TestRangeKey": dynamodb.AttributeValue{
-						Type: dynamodb.TypeNumber,
-						Data: []dynamodb.AttributeData{
-							dynamodb.AttributeData(ai),
-						},
-					},
+					"TestHashKey":  dynamodb.NewString("HashKeyVal" + ai),
+					"TestRangeKey": dynamodb.NewNumber(i),
 				},
 			},
 		})
