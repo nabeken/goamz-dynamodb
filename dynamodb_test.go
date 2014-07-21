@@ -186,7 +186,10 @@ func (s *DynamoDBCommonSuite) SetupDB() {
 	} else {
 		auth = dummyAuth
 	}
-	s.c = &dynamodb.Client{auth, dummyRegion[*provider]}
+	s.c = &dynamodb.Client{
+		Auth:   auth,
+		Region: dummyRegion[*provider],
+	}
 	// Ensure that the table does not exist
 	s.DeleteTable()
 
