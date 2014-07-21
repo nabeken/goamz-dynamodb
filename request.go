@@ -6,6 +6,11 @@ import (
 	"fmt"
 )
 
+type Request struct {
+	Target string
+	Param  interface{}
+}
+
 type CreateTableRequest struct {
 	AttributeDefinitions   []AttributeDefinition
 	GlobalSecondaryIndexes []GlobalSecondaryIndex `json:",omitempty"`
