@@ -809,28 +809,17 @@ func (s *BatchTestSuite) TestBatchWrite() {
 }
 
 func TestBatch(t *testing.T) {
-	if !*integration {
-		t.Skip("Test against amazon not enabled.")
-	}
-	suite.Run(t, new(BatchTestSuite))
+	doIntegrationTest(t, new(BatchTestSuite))
 }
 
 func TestQuery(t *testing.T) {
-	if !*integration {
-		t.Skip("Test against amazon not enabled.")
-	}
-	suite.Run(t, new(QueryTestSuite))
-	suite.Run(t, new(QueryOnIndexSuite))
+	doIntegrationTest(t, new(QueryTestSuite), new(QueryOnIndexSuite))
 }
 
 func TestScan(t *testing.T) {
-	if !*integration {
-		t.Skip("Test against amazon not enabled.")
-	}
-	suite.Run(t, new(ScanTestSuite))
+	doIntegrationTest(t, new(ScanTestSuite))
 }
 
 func TestClientTestSuite(t *testing.T) {
-	suite.Run(t, new(ClientTestSuite))
-	suite.Run(t, new(ClientGSITestSuite))
+	doIntegrationTest(t, new(ClientTestSuite), new(ClientGSITestSuite))
 }
