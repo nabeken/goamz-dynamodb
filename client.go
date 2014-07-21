@@ -11,8 +11,9 @@ import (
 )
 
 type Client struct {
-	Auth   aws.Auth
-	Region aws.Region
+	Auth       aws.Auth
+	Region     aws.Region
+	HTTPClient http.Client
 }
 
 func (c *Client) BatchGetItem(r *BatchGetItemRequest) (*BatchGetItemResult, error) {
@@ -121,7 +122,7 @@ func (c *Client) Do(req *Request) *response {
 	signer.Sign(hreq)
 
 	for attempt := attempts.Start(); attempt.Next(); {
-		resp, err := http.DefaultClient.Do(hreq)
+		resp, err := c.HTTPClient.Do(hreq)
 
 		if err != nil {
 			if shouldRetry(err) {
