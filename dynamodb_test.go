@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/crowdmob/goamz/aws"
+
 	"github.com/nabeken/goamz-dynamodb"
 )
 
@@ -43,85 +44,89 @@ func handleAction(action actionHandler) (done chan struct{}) {
 	return done
 }
 
-type DynamoDBTest struct {
-	TableDescription dynamodb.TableDescription
-	CreateNewTable   bool
+type DynamoDBCommonSuite struct {
+	CreateTableRequest *dynamodb.CreateTableRequest
+	CreateNewTable     bool
 
-	server *dynamodb.Server
-	region aws.Region
-	table  *dynamodb.Table
-	t      *testing.T
+	c *dynamodb.Client
+	t *testing.T
 }
 
 // TearDownSuite implements suite.TearDownAllSuite interface.
-func (dt *DynamoDBTest) TearDownSuite() {
+func (s *DynamoDBCommonSuite) TearDownSuite() {
 	// Ensure that the table does not exist
-	dt.DeleteTable(dt.t)
+	s.DeleteTable()
 }
 
 // TearDownTest implements suite.TearDownTestSuite interface.
-func (dt *DynamoDBTest) TearDownTest() {
-	dt.DeleteAllItems(dt.t)
+func (s *DynamoDBCommonSuite) TearDownTest() {
+	s.DeleteAllItems()
 }
 
 // DeleteAllItems deletes all items in the table
-func (dt *DynamoDBTest) DeleteAllItems(t *testing.T) {
-	pk, err := dt.TableDescription.BuildPrimaryKey()
+func (s *DynamoDBCommonSuite) DeleteAllItems() {
+	ret, err := s.c.Scan(&dynamodb.ScanRequest{TableName: s.CreateTableRequest.TableName})
 	if err != nil {
-		t.Fatal(err)
+		s.t.Error(err)
+		return
+	}
+	if ret.Count == 0 {
+		return
 	}
 
-	attrs, err := dt.table.Scan(nil)
-	if err != nil {
-		t.Fatal(err)
+	dir := &dynamodb.DeleteItemRequest{
+		Key:       make(map[string]dynamodb.AttributeValue),
+		TableName: s.CreateTableRequest.TableName,
 	}
-	for _, a := range attrs {
-		key := &dynamodb.Key{
-			HashKey: a[pk.KeyAttribute.Name].Value,
+	for _, ks := range s.CreateTableRequest.KeySchema {
+		for i := range ret.Items {
+			if v, ok := ret.Items[i][ks.AttributeName]; ok {
+				dir.Key[ks.AttributeName] = v
+			}
 		}
-		if pk.HasRange() {
-			key.RangeKey = a[pk.RangeAttribute.Name].Value
-		}
-		if ok, err := dt.table.DeleteItem(key); !ok {
-			t.Fatal(err)
-		}
+	}
+	if _, err := s.c.DeleteItem(dir); err != nil {
+		s.t.Error(err)
+		return
 	}
 }
 
-func (dt *DynamoDBTest) CreateTable(t *testing.T) {
-	status, err := dt.server.CreateTable(dt.TableDescription)
-	if err != nil {
-		dt.t.Fatal(err)
+func (s *DynamoDBCommonSuite) CreateTable() {
+	_, cerr := s.c.CreateTable(s.CreateTableRequest)
+	if cerr != nil {
+		s.t.Error(cerr)
+		return
 	}
-	if status != "ACTIVE" && status != "CREATING" {
-		dt.t.Error("Expect status to be ACTIVE or CREATING")
-	}
-
-	dt.WaitUntilStatus(dt.t, "ACTIVE")
+	s.WaitUntilStatus(dynamodb.TableStatusActive)
 }
 
-func (dt *DynamoDBTest) DeleteTable(t *testing.T) {
+func (s *DynamoDBCommonSuite) DeleteTable() {
 	// check whether the table exists
-	if tables, err := dt.server.ListTables(); err != nil {
-		t.Fatal(err)
+	if ret, err := s.c.ListTables(&dynamodb.ListTablesRequest{}); err != nil {
+		s.t.Error(err)
+		return
 	} else {
-		if !findTableByName(tables, dt.TableDescription.TableName) {
+		if !findTableByName(ret.TableNames, s.CreateTableRequest.TableName) {
 			return
 		}
 	}
 
 	// Delete the table and wait
-	if _, err := dt.server.DeleteTable(dt.TableDescription); err != nil {
-		t.Fatal(err)
+	if _, err := s.c.DeleteTable(
+		&dynamodb.DeleteTableRequest{s.CreateTableRequest.TableName}); err != nil {
+		s.t.Error(err)
+		return
 	}
 
 	timeoutChan := time.After(timeout)
 	done := handleAction(func(done chan struct{}) {
-		tables, err := dt.server.ListTables()
+		ret, err := s.c.ListTables(&dynamodb.ListTablesRequest{})
 		if err != nil {
-			t.Fatal(err)
+			s.t.Error(err)
+			close(done)
+			return
 		}
-		if findTableByName(tables, dt.TableDescription.TableName) {
+		if findTableByName(ret.TableNames, s.CreateTableRequest.TableName) {
 			time.Sleep(5 * time.Second)
 		} else {
 			close(done)
@@ -133,42 +138,46 @@ func (dt *DynamoDBTest) DeleteTable(t *testing.T) {
 		break
 	case <-timeoutChan:
 		close(done)
-		t.Error("Expect the table to be deleted but timed out")
+		s.t.Error("Expect the table to be deleted but timed out")
 	}
 }
 
-func (dt *DynamoDBTest) WaitUntilStatus(t *testing.T, status string) {
+func (s *DynamoDBCommonSuite) WaitUntilStatus(status dynamodb.TableStatus) {
 	// We should wait until the table is in specified status because a real DynamoDB has some delay for ready
 	timeoutChan := time.After(timeout)
 	done := handleAction(func(done chan struct{}) {
-		desc, err := dt.table.DescribeTable()
+		desc, err := s.c.DescribeTable(
+			&dynamodb.DescribeTableRequest{s.CreateTableRequest.TableName})
 		if err != nil {
-			t.Fatal(err)
-		}
-		if desc.TableStatus == status {
+			s.t.Error(err)
 			close(done)
+			return
 		}
-		time.Sleep(5 * time.Second)
+		if desc.Table.TableStatus == status {
+			close(done)
+		} else {
+			time.Sleep(5 * time.Second)
+		}
 	})
 	select {
 	case <-done:
 		break
 	case <-timeoutChan:
 		close(done)
-		t.Errorf("Expect a status to be %s, but timed out", status)
+		s.t.Errorf("Expect a status to be %s, but timed out", status)
 	}
 }
 
-func (dt *DynamoDBTest) SetupDB(t *testing.T) {
+func (s *DynamoDBCommonSuite) SetupDB() {
 	if !*integration {
-		t.Skip("Integration tests are disabled")
+		s.t.Skip("Integration tests are disabled")
 	}
 
-	t.Logf("Performing Integration tests on %s...", *provider)
+	s.t.Logf("Performing Integration tests on %s...", *provider)
 
 	var auth aws.Auth
 	if *provider == "amazon" {
-		t.Log("Using REAL AMAZON SERVER")
+		s.t.Log("Using REAL AMAZON SERVER")
 		awsAuth, err := aws.EnvAuth()
 		if err != nil {
 			log.Fatal(err)
@@ -177,19 +186,12 @@ func (dt *DynamoDBTest) SetupDB(t *testing.T) {
 	} else {
 		auth = dummyAuth
 	}
-	dt.server = &dynamodb.Server{auth, dummyRegion[*provider]}
-	pk, err := dt.TableDescription.BuildPrimaryKey()
-	if err != nil {
-		t.Skip(err.Error())
-	}
-
-	dt.table = dt.server.NewTable(dt.TableDescription.TableName, pk)
-	dt.t = t
+	s.c = &dynamodb.Client{auth, dummyRegion[*provider]}
 	// Ensure that the table does not exist
-	dt.DeleteTable(t)
+	s.DeleteTable()
 
-	if dt.CreateNewTable {
-		dt.CreateTable(t)
+	if s.CreateNewTable {
+		s.CreateTable()
 	}
 }
 
