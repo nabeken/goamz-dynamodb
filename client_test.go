@@ -137,9 +137,9 @@ func (s *ClientGSITestSuite) SetupSuite() {
 	s.t = s.T()
 	s.CreateTableRequest = &dynamodb.CreateTableRequest{
 		AttributeDefinitions: []dynamodb.AttributeDefinition{
-			dynamodb.AttributeDefinition{"UserId", "S"},
-			dynamodb.AttributeDefinition{"OSType", "S"},
-			dynamodb.AttributeDefinition{"IMSI", "S"},
+			dynamodb.AttributeDefinition{"UserId", dynamodb.TypeString},
+			dynamodb.AttributeDefinition{"OSType", dynamodb.TypeString},
+			dynamodb.AttributeDefinition{"IMSI", dynamodb.TypeString},
 		},
 		GlobalSecondaryIndexes: []dynamodb.GlobalSecondaryIndex{
 			dynamodb.GlobalSecondaryIndex{
@@ -257,8 +257,8 @@ func (s *ScanTestSuite) SetupSuite() {
 	s.CreateTableRequest = &dynamodb.CreateTableRequest{
 		TableName: "DynamoDBTestScan",
 		AttributeDefinitions: []dynamodb.AttributeDefinition{
-			dynamodb.AttributeDefinition{"TestHashKey", "S"},
-			dynamodb.AttributeDefinition{"TestRangeKey", "N"},
+			dynamodb.AttributeDefinition{"TestHashKey", dynamodb.TypeString},
+			dynamodb.AttributeDefinition{"TestRangeKey", dynamodb.TypeNumber},
 		},
 		KeySchema: []dynamodb.KeySchemaElement{
 			dynamodb.KeySchemaElement{"TestHashKey", dynamodb.KeyTypeHash},
@@ -437,10 +437,10 @@ func (s *QueryOnIndexSuite) SetupSuite() {
 	s.CreateTableRequest = &dynamodb.CreateTableRequest{
 		TableName: "DynamoDBTestQueryOnIndex",
 		AttributeDefinitions: []dynamodb.AttributeDefinition{
-			dynamodb.AttributeDefinition{"TestHashKey", "S"},
-			dynamodb.AttributeDefinition{"TestRangeKey", "N"},
-			dynamodb.AttributeDefinition{"LSIKey", "N"},
-			dynamodb.AttributeDefinition{"GSIKey", "N"},
+			dynamodb.AttributeDefinition{"TestHashKey", dynamodb.TypeString},
+			dynamodb.AttributeDefinition{"TestRangeKey", dynamodb.TypeNumber},
+			dynamodb.AttributeDefinition{"LSIKey", dynamodb.TypeNumber},
+			dynamodb.AttributeDefinition{"GSIKey", dynamodb.TypeNumber},
 		},
 		KeySchema: []dynamodb.KeySchemaElement{
 			dynamodb.KeySchemaElement{"TestHashKey", dynamodb.KeyTypeHash},
