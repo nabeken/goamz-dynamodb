@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 type (
@@ -419,6 +420,46 @@ type TableDescription struct {
 
 type CreateTableResult struct {
 	TableDescription TableDescription `json:",omitempty"`
+}
+
+func NewString(val string) AttributeValue {
+	return AttributeValue{
+		Type: TypeString,
+		Data: []AttributeData{
+			AttributeData(val),
+		},
+	}
+}
+
+func NewStringSet(val ...string) AttributeValue {
+	ad := make([]AttributeData, len(val))
+	for i := range val {
+		ad[i] = AttributeData(val[i])
+	}
+	return AttributeValue{
+		Type: TypeStringSet,
+		Data: ad,
+	}
+}
+
+func NewNumber(val int) AttributeValue {
+	return AttributeValue{
+		Type: TypeNumber,
+		Data: []AttributeData{
+			AttributeData(strconv.Itoa(val)),
+		},
+	}
+}
+
+func NewNumberSet(val ...int) AttributeValue {
+	ad := make([]AttributeData, len(val))
+	for i := range val {
+		ad[i] = AttributeData(strconv.Itoa(val[i]))
+	}
+	return AttributeValue{
+		Type: TypeNumberSet,
+		Data: ad,
+	}
 }
 
 // Just for JSON-transport

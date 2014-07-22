@@ -308,10 +308,7 @@ func TestDeleteItemRequest_Least(t *testing.T) {
 `)
 	q := dynamodb.DeleteItemRequest{
 		Key: map[string]dynamodb.AttributeValue{
-			"DELETE_ITEM_REQUEST_KEY": dynamodb.AttributeValue{
-				Type: dynamodb.TypeString,
-				Data: []dynamodb.AttributeData{"STRING"},
-			},
+			"DELETE_ITEM_REQUEST_KEY": dynamodb.NewString("STRING"),
 		},
 		TableName: "DELETE_ITEM_REQUEST_TABLE",
 	}
@@ -352,10 +349,7 @@ func TestDeleteItemRequest_Full(t *testing.T) {
 		ConditionalOperator: dynamodb.CondOpOr,
 		Expected: map[string]dynamodb.DeprecatedCondition{
 			"DELETE_ITEM_REQUEST_KEY": dynamodb.DeprecatedCondition{
-				Value: dynamodb.AttributeValue{
-					Type: dynamodb.TypeString,
-					Data: []dynamodb.AttributeData{"STRING"},
-				},
+				Value:  dynamodb.NewString("STRING"),
 				Exists: true,
 			},
 			"DELETE_ITEM_REQUEST_KEY2": dynamodb.DeprecatedCondition{
@@ -363,10 +357,7 @@ func TestDeleteItemRequest_Full(t *testing.T) {
 			},
 		},
 		Key: map[string]dynamodb.AttributeValue{
-			"DELETE_ITEM_REQUEST_KEY": dynamodb.AttributeValue{
-				Type: dynamodb.TypeString,
-				Data: []dynamodb.AttributeData{"STRING"},
-			},
+			"DELETE_ITEM_REQUEST_KEY": dynamodb.NewString("STRING"),
 		},
 		ReturnConsumedCapacity:      dynamodb.ConsumedCapTotal,
 		ReturnItemCollectionMetrics: dynamodb.ReturnItemCollectionMetricsNone,
@@ -425,10 +416,7 @@ func TestGetItemRequest_Least(t *testing.T) {
 `)
 	q := dynamodb.GetItemRequest{
 		Key: map[string]dynamodb.AttributeValue{
-			"GET_ITEM_KEY": dynamodb.AttributeValue{
-				Type: dynamodb.TypeString,
-				Data: []dynamodb.AttributeData{"STRING"},
-			},
+			"GET_ITEM_KEY": dynamodb.NewString("STRING"),
 		},
 		TableName: "GET_ITEM_TABLE",
 	}
@@ -460,10 +448,7 @@ func TestGetItemRequest_Full(t *testing.T) {
 		AttributesToGet: []string{"ATTR1", "ATTR2"},
 		ConsistentRead:  true,
 		Key: map[string]dynamodb.AttributeValue{
-			"GET_ITEM_KEY": dynamodb.AttributeValue{
-				Type: dynamodb.TypeString,
-				Data: []dynamodb.AttributeData{"STRING"},
-			},
+			"GET_ITEM_KEY": dynamodb.NewString("STRING"),
 		},
 		ReturnConsumedCapacity: dynamodb.ConsumedCapTotal,
 		TableName:              "GET_ITEM_TABLE",
@@ -516,10 +501,7 @@ func TestPutRequest_Least(t *testing.T) {
 `)
 	q := dynamodb.PutItemRequest{
 		Item: map[string]dynamodb.AttributeValue{
-			"PUT_ITEM_KEY": dynamodb.AttributeValue{
-				Type: dynamodb.TypeString,
-				Data: []dynamodb.AttributeData{"STRING"},
-			},
+			"PUT_ITEM_KEY": dynamodb.NewString("STRING"),
 		},
 		TableName: "PUT_ITEM_TABLE",
 	}
@@ -560,10 +542,7 @@ func TestPutRequest_Full(t *testing.T) {
 		ConditionalOperator: dynamodb.CondOpOr,
 		Expected: map[string]dynamodb.DeprecatedCondition{
 			"PUT_ITEM_REQUEST_KEY": dynamodb.DeprecatedCondition{
-				Value: dynamodb.AttributeValue{
-					Type: dynamodb.TypeString,
-					Data: []dynamodb.AttributeData{"STRING"},
-				},
+				Value:  dynamodb.NewString("STRING"),
 				Exists: true,
 			},
 			"PUT_ITEM_REQUEST_KEY2": dynamodb.DeprecatedCondition{
@@ -571,10 +550,7 @@ func TestPutRequest_Full(t *testing.T) {
 			},
 		},
 		Item: map[string]dynamodb.AttributeValue{
-			"PUT_ITEM_KEY": dynamodb.AttributeValue{
-				Type: dynamodb.TypeString,
-				Data: []dynamodb.AttributeData{"STRING"},
-			},
+			"PUT_ITEM_KEY": dynamodb.NewString("STRING"),
 		},
 		ReturnConsumedCapacity:      dynamodb.ConsumedCapTotal,
 		ReturnItemCollectionMetrics: dynamodb.ReturnItemCollectionMetricsNone,
@@ -608,10 +584,7 @@ func TestQuery_Least(t *testing.T) {
 		KeyConditions: map[string]dynamodb.Condition{
 			"REQUEST_KEY": dynamodb.Condition{
 				AttributeValueList: []dynamodb.AttributeValue{
-					dynamodb.AttributeValue{
-						Type: dynamodb.TypeString,
-						Data: []dynamodb.AttributeData{"STRING"},
-					},
+					dynamodb.NewString("STRING"),
 				},
 				ComparisonOperator: dynamodb.CmpOpEQ,
 			},
@@ -672,19 +645,13 @@ func TestQuery_Full(t *testing.T) {
 		ConditionalOperator: dynamodb.CondOpAnd,
 		ConsistentRead:      true,
 		ExclusiveStartKey: map[string]dynamodb.AttributeValue{
-			"START": dynamodb.AttributeValue{
-				Type: dynamodb.TypeNumber,
-				Data: []dynamodb.AttributeData{"123456789"},
-			},
+			"START": dynamodb.NewNumber(123456789),
 		},
 		IndexName: "MYGSI",
 		KeyConditions: map[string]dynamodb.Condition{
 			"REQUEST_KEY": dynamodb.Condition{
 				AttributeValueList: []dynamodb.AttributeValue{
-					dynamodb.AttributeValue{
-						Type: dynamodb.TypeString,
-						Data: []dynamodb.AttributeData{"STRING"},
-					},
+					dynamodb.NewString("STRING"),
 				},
 				ComparisonOperator: dynamodb.CmpOpEQ,
 			},
@@ -693,10 +660,7 @@ func TestQuery_Full(t *testing.T) {
 		QueryFilter: map[string]dynamodb.Condition{
 			"REQUEST_KEY": dynamodb.Condition{
 				AttributeValueList: []dynamodb.AttributeValue{
-					dynamodb.AttributeValue{
-						Type: dynamodb.TypeString,
-						Data: []dynamodb.AttributeData{"STRING"},
-					},
+					dynamodb.NewString("STRING"),
 				},
 				ComparisonOperator: dynamodb.CmpOpEQ,
 			},

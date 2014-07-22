@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/crowdmob/goamz/aws"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/nabeken/goamz-dynamodb"
 )
@@ -205,4 +206,13 @@ func findTableByName(tables []string, name string) bool {
 		}
 	}
 	return false
+}
+
+func doIntegrationTest(t *testing.T, suites ...suite.TestingSuite) {
+	if !*integration {
+		t.Skip("Test against amazon not enabled.")
+	}
+	for i := range suites {
+		suite.Run(t, suites[i])
+	}
 }
