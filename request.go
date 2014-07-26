@@ -6,58 +6,38 @@ import (
 	"fmt"
 )
 
-type Request struct {
+type RawRequest struct {
 	Target string
 	Param  interface{}
 }
 
-type CreateTableRequest struct {
-	AttributeDefinitions   []AttributeDefinition
-	GlobalSecondaryIndexes []GlobalSecondaryIndex `json:",omitempty"`
-	KeySchema              []KeySchemaElement
-	LocalSecondaryIndexes  []LocalSecondaryIndex `json:",omitempty"`
-	ProvisionedThroughput  ProvisionedThroughput
-	TableName              string
-}
+type CreateTable Table
 
-type DeleteTableRequest struct {
-	TableName string
-}
-
-type DescribeTableRequest struct {
-	TableName string
-}
-
-type ListTablesRequest struct {
+type ListTablesOption struct {
 	ExclusiveStartTableName string `json:",omitempty"`
 	Limit                   uint   `json:",omitempty"`
 }
 
-type UpdateTableRequest struct {
+type UpdateTableOption struct {
 	GlobalSecondaryIndexUpdates []GlobalSecondaryIndexUpdate `json:",omitempty"`
 	ProvisionedThroughput       ProvisionedThroughput        `json:",omitempty"`
-	TableName                   string
 }
 
-type BatchGetItemRequest struct {
-	RequestItems           map[string]KeysAndAttributes
+type BatchGetItemOption struct {
 	ReturnConsumedCapacity ReturnConsumedCapacity `json:",omitempty"`
 }
 
-type BatchWriteItemRequest struct {
-	RequestItems                map[string][]WriteRequest
+type BatchWriteItemOption struct {
 	ReturnConsumedCapacity      ReturnConsumedCapacity      `json:",omitempty"`
 	ReturnItemCollectionMetrics ReturnItemCollectionMetrics `json:",omitempty"`
 }
 
-type DeleteItemRequest struct {
-	ConditionalOperator         ConditionalOperator    `json:",omitempty"`
-	Expected                    ExpectedAttributeValue `json:",omitempty"`
-	Key                         map[string]AttributeValue
+type DeleteItemOption struct {
+	ConditionalOperator         ConditionalOperator         `json:",omitempty"`
+	Expected                    ExpectedAttributeValue      `json:",omitempty"`
 	ReturnConsumedCapacity      ReturnConsumedCapacity      `json:",omitempty"`
 	ReturnItemCollectionMetrics ReturnItemCollectionMetrics `json:",omitempty"`
 	ReturnValues                ReturnValues                `json:",omitempty"`
-	TableName                   string
 }
 
 type DeleteRequest struct {
@@ -68,49 +48,43 @@ func (r DeleteRequest) IsEmpty() bool {
 	return len(r.Key) == 0
 }
 
-type GetItemRequest struct {
-	AttributesToGet        []string `json:",omitempty"`
-	ConsistentRead         bool     `json:",omitempty"`
-	Key                    map[string]AttributeValue
+type GetItemOption struct {
+	AttributesToGet        []string               `json:",omitempty"`
+	ConsistentRead         bool                   `json:",omitempty"`
 	ReturnConsumedCapacity ReturnConsumedCapacity `json:",omitempty"`
-	TableName              string
 }
 
-type PutItemRequest struct {
+type PutItemOption struct {
 	ConditionalOperator ConditionalOperator `json:",omitempty"`
 	//Expected                    map[string]Condition `json:",omitempty"`
-	Expected                    ExpectedAttributeValue `json:",omitempty"`
-	Item                        map[string]AttributeValue
+	Expected                    ExpectedAttributeValue      `json:",omitempty"`
 	ReturnConsumedCapacity      ReturnConsumedCapacity      `json:",omitempty"`
 	ReturnItemCollectionMetrics ReturnItemCollectionMetrics `json:",omitempty"`
 	ReturnValues                ReturnValues                `json:",omitempty"`
-	TableName                   string
 }
 
 type PutRequest struct {
-	Item map[string]AttributeValue `json:",omitempty"`
+	Item Item `json:",omitempty"`
 }
 
 func (r PutRequest) IsEmpty() bool {
 	return len(r.Item) == 0
 }
 
-type QueryRequest struct {
+type QueryOption struct {
 	AttributesToGet        []string                  `json:",omitempty"`
 	ConditionalOperator    ConditionalOperator       `json:",omitempty"`
 	ConsistentRead         bool                      `json:",omitempty"`
 	ExclusiveStartKey      map[string]AttributeValue `json:",omitempty"`
 	IndexName              string                    `json:",omitempty"`
-	KeyConditions          KeyConditions
-	Limit                  uint                   `json:",omitempty"`
-	QueryFilter            QueryFilter            `json:",omitempty"`
-	ReturnConsumedCapacity ReturnConsumedCapacity `json:",omitempty"`
-	ScanIndexForward       bool                   `json:",omitempty"`
-	Select                 Select                 `json:",omitempty"`
-	TableName              string
+	Limit                  uint                      `json:",omitempty"`
+	QueryFilter            QueryFilter               `json:",omitempty"`
+	ReturnConsumedCapacity ReturnConsumedCapacity    `json:",omitempty"`
+	ScanIndexForward       bool                      `json:",omitempty"`
+	Select                 Select                    `json:",omitempty"`
 }
 
-type ScanRequest struct {
+type ScanOption struct {
 	AttributesToGet        []string                  `json:",omitempty"`
 	ConditionalOperator    ConditionalOperator       `json:",omitempty"`
 	ExclusiveStartKey      map[string]AttributeValue `json:",omitempty"`
@@ -119,19 +93,16 @@ type ScanRequest struct {
 	ScanFilter             ScanFilter                `json:",omitempty"`
 	Segment                uint                      `json:",omitempty"`
 	Select                 Select                    `json:",omitempty"`
-	TableName              string
-	TotalSegments          uint `json:",omitempty"`
+	TotalSegments          uint                      `json:",omitempty"`
 }
 
-type UpdateItemRequest struct {
-	AttributeUpdates            map[string]AttributeUpdate `json:",omitempty"`
-	ConditionalOperator         ConditionalOperator        `json:",omitempty"`
-	Expected                    ExpectedAttributeValue     `json:",omitempty"`
-	Key                         map[string]AttributeValue
+type UpdateItemOption struct {
+	AttributeUpdates            map[string]AttributeUpdate  `json:",omitempty"`
+	ConditionalOperator         ConditionalOperator         `json:",omitempty"`
+	Expected                    ExpectedAttributeValue      `json:",omitempty"`
 	ReturnConsumedCapacity      ReturnConsumedCapacity      `json:",omitempty"`
 	ReturnItemCollectionMetrics ReturnItemCollectionMetrics `json:",omitempty"`
 	ReturnValues                ReturnValues                `json:",omitempty"`
-	TableName                   string
 }
 
 type WriteRequest struct {

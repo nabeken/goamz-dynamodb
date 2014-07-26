@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateTableRequest_Least(t *testing.T) {
+func TestCreateTable_Least(t *testing.T) {
 	expectedJSON := []byte(`
 {
 	"AttributeDefinitions": [
@@ -38,8 +38,8 @@ func TestCreateTableRequest_Least(t *testing.T) {
 	"TableName": "CREATE_TABLE_REQUEST"
 }
 `)
-	q := dynamodb.CreateTableRequest{
-		TableName: "CREATE_TABLE_REQUEST",
+	q := dynamodb.CreateTable{
+		Name: "CREATE_TABLE_REQUEST",
 		AttributeDefinitions: []dynamodb.AttributeDefinition{
 			dynamodb.AttributeDefinition{"HASHKEY", dynamodb.TypeString},
 			dynamodb.AttributeDefinition{"RANGEKEY", dynamodb.TypeNumber},
@@ -53,38 +53,16 @@ func TestCreateTableRequest_Least(t *testing.T) {
 			WriteCapacityUnits: 10,
 		},
 	}
-	expectedRequest := dynamodb.CreateTableRequest{}
+	expectedRequest := dynamodb.CreateTable{}
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
 	assert.Equal(t, q, expectedRequest)
 }
 
-func TestCreateTableRequest_Full(t *testing.T) {
+func TestCreateTable_Full(t *testing.T) {
 	expectedJSON := []byte(`
 {
-	"AttributeDefinitions": [
-		{
-			"AttributeName": "HASHKEY",
-			"AttributeType": "S"
-		},
-		{
-			"AttributeName": "RANGEKEY",
-			"AttributeType": "N"
-		},
-		{
-			"AttributeName": "ATTR",
-			"AttributeType": "N"
-		},
-		{
-			"AttributeName": "ATTR1",
-			"AttributeType": "N"
-		},
-		{
-			"AttributeName": "ATTR2",
-			"AttributeType": "N"
-		}
-	],
 	"GlobalSecondaryIndexes": [
 		{
 			"IndexName": "GSI1",
@@ -133,16 +111,6 @@ func TestCreateTableRequest_Full(t *testing.T) {
 			}
 		}
 	],
-	"KeySchema": [
-		{
-			"AttributeName": "HASHKEY",
-			"KeyType": "HASH"
-		},
-		{
-			"AttributeName": "RANGEKEY",
-			"KeyType": "RANGE"
-		}
-	],
 	"LocalSecondaryIndexes": [
 		{
 			"IndexName": "LSI1",
@@ -182,23 +150,10 @@ func TestCreateTableRequest_Full(t *testing.T) {
 				]
 			}
 		}
-	],
-	"ProvisionedThroughput": {
-		"ReadCapacityUnits": 10,
-		"WriteCapacityUnits": 10
-	},
-	"TableName": "CREATE_TABLE_REQUEST_FULL"
+	]
 }
 `)
-	q := dynamodb.CreateTableRequest{
-		TableName: "CREATE_TABLE_REQUEST_FULL",
-		AttributeDefinitions: []dynamodb.AttributeDefinition{
-			dynamodb.AttributeDefinition{"HASHKEY", dynamodb.TypeString},
-			dynamodb.AttributeDefinition{"RANGEKEY", dynamodb.TypeNumber},
-			dynamodb.AttributeDefinition{"ATTR", dynamodb.TypeNumber},
-			dynamodb.AttributeDefinition{"ATTR1", dynamodb.TypeNumber},
-			dynamodb.AttributeDefinition{"ATTR2", dynamodb.TypeNumber},
-		},
+	q := dynamodb.TableOption{
 		GlobalSecondaryIndexes: []dynamodb.GlobalSecondaryIndex{
 			dynamodb.GlobalSecondaryIndex{
 				IndexName: "GSI1",
@@ -279,47 +234,15 @@ func TestCreateTableRequest_Full(t *testing.T) {
 				},
 			},
 		},
-		KeySchema: []dynamodb.KeySchemaElement{
-			dynamodb.KeySchemaElement{"HASHKEY", dynamodb.KeyTypeHash},
-			dynamodb.KeySchemaElement{"RANGEKEY", dynamodb.KeyTypeRange},
-		},
-		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
-			ReadCapacityUnits:  10,
-			WriteCapacityUnits: 10,
-		},
 	}
-	expectedRequest := dynamodb.CreateTableRequest{}
+	expectedRequest := dynamodb.TableOption{}
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
 	assert.Equal(t, q, expectedRequest)
 }
 
-func TestDeleteItemRequest_Least(t *testing.T) {
-	expectedJSON := []byte(`
-{
-  "Key": {
-    "DELETE_ITEM_REQUEST_KEY": {
-      "S": "STRING"
-    }
-  },
-  "TableName": "DELETE_ITEM_REQUEST_TABLE"
-}
-`)
-	q := dynamodb.DeleteItemRequest{
-		Key: map[string]dynamodb.AttributeValue{
-			"DELETE_ITEM_REQUEST_KEY": dynamodb.NewString("STRING"),
-		},
-		TableName: "DELETE_ITEM_REQUEST_TABLE",
-	}
-	expectedRequest := dynamodb.DeleteItemRequest{}
-	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
-		t.Fail()
-	}
-	assert.Equal(t, q, expectedRequest)
-}
-
-func TestDeleteItemRequest_Full(t *testing.T) {
+func TestDeleteItemOption(t *testing.T) {
 	expectedJSON := []byte(`
 {
   "ConditionalOperator": "OR",
@@ -334,18 +257,12 @@ func TestDeleteItemRequest_Full(t *testing.T) {
       "Exists": false
     }
   },
-  "Key": {
-    "DELETE_ITEM_REQUEST_KEY": {
-      "S": "STRING"
-    }
-  },
   "ReturnConsumedCapacity": "TOTAL",
   "ReturnItemCollectionMetrics": "NONE",
-  "ReturnValues": "ALL_OLD",
-  "TableName": "DELETE_ITEM_REQUEST_TABLE"
+  "ReturnValues": "ALL_OLD"
 }
 `)
-	q := dynamodb.DeleteItemRequest{
+	q := dynamodb.DeleteItemOption{
 		ConditionalOperator: dynamodb.CondOpOr,
 		Expected: map[string]dynamodb.DeprecatedCondition{
 			"DELETE_ITEM_REQUEST_KEY": dynamodb.DeprecatedCondition{
@@ -356,78 +273,18 @@ func TestDeleteItemRequest_Full(t *testing.T) {
 				Exists: false,
 			},
 		},
-		Key: map[string]dynamodb.AttributeValue{
-			"DELETE_ITEM_REQUEST_KEY": dynamodb.NewString("STRING"),
-		},
 		ReturnConsumedCapacity:      dynamodb.ConsumedCapTotal,
 		ReturnItemCollectionMetrics: dynamodb.ReturnItemCollectionMetricsNone,
 		ReturnValues:                dynamodb.ReturnValuesAllOld,
-		TableName:                   "DELETE_ITEM_REQUEST_TABLE",
 	}
-	expectedRequest := dynamodb.DeleteItemRequest{}
+	expectedRequest := dynamodb.DeleteItemOption{}
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
 	assert.Equal(t, q, expectedRequest)
 }
 
-func TestDeleteTableRequest(t *testing.T) {
-	expectedJSON := []byte(`
-{
-  "TableName": "DELETE_TABLE_REQUEST_TABLE"
-}
-`)
-	q := dynamodb.DeleteTableRequest{
-		TableName: "DELETE_TABLE_REQUEST_TABLE",
-	}
-	expectedRequest := dynamodb.DeleteTableRequest{}
-	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
-		t.Fail()
-	}
-	assert.Equal(t, q, expectedRequest)
-}
-
-func TestDescribeTableRequest(t *testing.T) {
-	expectedJSON := []byte(`
-{
-  "TableName": "DESCRIBE_TABLE_REQUEST_TABLE"
-}
-`)
-	q := dynamodb.DescribeTableRequest{
-		TableName: "DESCRIBE_TABLE_REQUEST_TABLE",
-	}
-	expectedRequest := dynamodb.DescribeTableRequest{}
-	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
-		t.Fail()
-	}
-	assert.Equal(t, q, expectedRequest)
-}
-
-func TestGetItemRequest_Least(t *testing.T) {
-	expectedJSON := []byte(`
-{
-  "Key": {
-    "GET_ITEM_KEY": {
-      "S": "STRING"
-    }
-  },
-  "TableName": "GET_ITEM_TABLE"
-}
-`)
-	q := dynamodb.GetItemRequest{
-		Key: map[string]dynamodb.AttributeValue{
-			"GET_ITEM_KEY": dynamodb.NewString("STRING"),
-		},
-		TableName: "GET_ITEM_TABLE",
-	}
-	expectedRequest := dynamodb.GetItemRequest{}
-	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
-		t.Fail()
-	}
-	assert.Equal(t, q, expectedRequest)
-}
-
-func TestGetItemRequest_Full(t *testing.T) {
+func TestGetItemOption(t *testing.T) {
 	expectedJSON := []byte(`
 {
   "AttributesToGet": [
@@ -435,84 +292,40 @@ func TestGetItemRequest_Full(t *testing.T) {
     "ATTR2"
   ],
   "ConsistentRead": true,
-  "Key": {
-    "GET_ITEM_KEY": {
-      "S": "STRING"
-    }
-  },
-  "ReturnConsumedCapacity": "TOTAL",
-  "TableName": "GET_ITEM_TABLE"
+  "ReturnConsumedCapacity": "TOTAL"
 }
 `)
-	q := dynamodb.GetItemRequest{
-		AttributesToGet: []string{"ATTR1", "ATTR2"},
-		ConsistentRead:  true,
-		Key: map[string]dynamodb.AttributeValue{
-			"GET_ITEM_KEY": dynamodb.NewString("STRING"),
-		},
+	q := dynamodb.GetItemOption{
+		AttributesToGet:        []string{"ATTR1", "ATTR2"},
+		ConsistentRead:         true,
 		ReturnConsumedCapacity: dynamodb.ConsumedCapTotal,
-		TableName:              "GET_ITEM_TABLE",
 	}
-	expectedRequest := dynamodb.GetItemRequest{}
+	expectedRequest := dynamodb.GetItemOption{}
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
 	assert.Equal(t, q, expectedRequest)
 }
 
-func TestListTableRequest_Least(t *testing.T) {
-	expectedJSON := []byte(`{}`)
-	q := dynamodb.ListTablesRequest{}
-	expectedRequest := dynamodb.ListTablesRequest{}
-	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
-		t.Fail()
-	}
-	assert.Equal(t, q, expectedRequest)
-}
-
-func TestListTableRequest_Full(t *testing.T) {
+func TestListTableOption(t *testing.T) {
 	expectedJSON := []byte(`
 {
 	"ExclusiveStartTableName": "LIST_TABLES_REQUEST_TABLE",
 	"Limit": 10
 }
 `)
-	q := dynamodb.ListTablesRequest{
+	q := dynamodb.ListTablesOption{
 		ExclusiveStartTableName: "LIST_TABLES_REQUEST_TABLE",
 		Limit: 10,
 	}
-	expectedRequest := dynamodb.ListTablesRequest{}
+	expectedRequest := dynamodb.ListTablesOption{}
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
 	assert.Equal(t, q, expectedRequest)
 }
 
-func TestPutRequest_Least(t *testing.T) {
-	expectedJSON := []byte(`
-{
-  "Item": {
-    "PUT_ITEM_KEY": {
-      "S": "STRING"
-    }
-  },
-  "TableName": "PUT_ITEM_TABLE"
-}
-`)
-	q := dynamodb.PutItemRequest{
-		Item: map[string]dynamodb.AttributeValue{
-			"PUT_ITEM_KEY": dynamodb.NewString("STRING"),
-		},
-		TableName: "PUT_ITEM_TABLE",
-	}
-	expectedRequest := dynamodb.PutItemRequest{}
-	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
-		t.Fail()
-	}
-	assert.Equal(t, q, expectedRequest)
-}
-
-func TestPutRequest_Full(t *testing.T) {
+func TestPutItemOption(t *testing.T) {
 	expectedJSON := []byte(`
 {
   "ConditionalOperator": "OR",
@@ -527,18 +340,12 @@ func TestPutRequest_Full(t *testing.T) {
       "Exists": false
     }
   },
-  "Item": {
-    "PUT_ITEM_KEY": {
-      "S": "STRING"
-    }
-  },
   "ReturnConsumedCapacity": "TOTAL",
   "ReturnItemCollectionMetrics": "NONE",
-  "ReturnValues": "ALL_OLD",
-  "TableName": "PUT_ITEM_REQUEST_TABLE"
+  "ReturnValues": "ALL_OLD"
 }
 `)
-	q := dynamodb.PutItemRequest{
+	q := dynamodb.PutItemOption{
 		ConditionalOperator: dynamodb.CondOpOr,
 		Expected: map[string]dynamodb.DeprecatedCondition{
 			"PUT_ITEM_REQUEST_KEY": dynamodb.DeprecatedCondition{
@@ -549,56 +356,18 @@ func TestPutRequest_Full(t *testing.T) {
 				Exists: false,
 			},
 		},
-		Item: map[string]dynamodb.AttributeValue{
-			"PUT_ITEM_KEY": dynamodb.NewString("STRING"),
-		},
 		ReturnConsumedCapacity:      dynamodb.ConsumedCapTotal,
 		ReturnItemCollectionMetrics: dynamodb.ReturnItemCollectionMetricsNone,
 		ReturnValues:                dynamodb.ReturnValuesAllOld,
-		TableName:                   "PUT_ITEM_REQUEST_TABLE",
 	}
-	expectedRequest := dynamodb.PutItemRequest{}
+	expectedRequest := dynamodb.PutItemOption{}
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
 	assert.Equal(t, q, expectedRequest)
 }
 
-func TestQuery_Least(t *testing.T) {
-	expectedJSON := []byte(`
-{
-  "KeyConditions": {
-    "REQUEST_KEY": {
-      "AttributeValueList": [
-        {
-          "S": "STRING"
-        }
-      ],
-      "ComparisonOperator": "EQ"
-    }
-  },
-  "TableName": "REQUEST_TABLE"
-}
-`)
-	q := dynamodb.QueryRequest{
-		KeyConditions: map[string]dynamodb.Condition{
-			"REQUEST_KEY": dynamodb.Condition{
-				AttributeValueList: []dynamodb.AttributeValue{
-					dynamodb.NewString("STRING"),
-				},
-				ComparisonOperator: dynamodb.CmpOpEQ,
-			},
-		},
-		TableName: "REQUEST_TABLE",
-	}
-	expectedRequest := dynamodb.QueryRequest{}
-	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
-		t.Fail()
-	}
-	assert.Equal(t, q, expectedRequest)
-}
-
-func TestQuery_Full(t *testing.T) {
+func TestQueryOption(t *testing.T) {
 	expectedJSON := []byte(`
 {
   "AttributesToGet": [
@@ -613,16 +382,6 @@ func TestQuery_Full(t *testing.T) {
     }
   },
   "IndexName": "MYGSI",
-  "KeyConditions": {
-    "REQUEST_KEY": {
-      "AttributeValueList": [
-        {
-          "S": "STRING"
-        }
-      ],
-      "ComparisonOperator": "EQ"
-    }
-  },
   "Limit": 100,
   "QueryFilter": {
     "REQUEST_KEY": {
@@ -636,11 +395,10 @@ func TestQuery_Full(t *testing.T) {
   },
   "ReturnConsumedCapacity": "TOTAL",
   "ScanIndexForward": true,
-  "Select": "COUNT",
-  "TableName": "REQUEST_TABLE"
+  "Select": "COUNT"
 }
 `)
-	q := dynamodb.QueryRequest{
+	q := dynamodb.QueryOption{
 		AttributesToGet:     []string{"ATTR1", "ATTR2"},
 		ConditionalOperator: dynamodb.CondOpAnd,
 		ConsistentRead:      true,
@@ -648,15 +406,7 @@ func TestQuery_Full(t *testing.T) {
 			"START": dynamodb.NewNumber(123456789),
 		},
 		IndexName: "MYGSI",
-		KeyConditions: map[string]dynamodb.Condition{
-			"REQUEST_KEY": dynamodb.Condition{
-				AttributeValueList: []dynamodb.AttributeValue{
-					dynamodb.NewString("STRING"),
-				},
-				ComparisonOperator: dynamodb.CmpOpEQ,
-			},
-		},
-		Limit: 100,
+		Limit:     100,
 		QueryFilter: map[string]dynamodb.Condition{
 			"REQUEST_KEY": dynamodb.Condition{
 				AttributeValueList: []dynamodb.AttributeValue{
@@ -668,32 +418,15 @@ func TestQuery_Full(t *testing.T) {
 		ReturnConsumedCapacity: dynamodb.ConsumedCapTotal,
 		ScanIndexForward:       true,
 		Select:                 dynamodb.SelectCount,
-		TableName:              "REQUEST_TABLE",
 	}
-	expectedRequest := dynamodb.QueryRequest{}
+	expectedRequest := dynamodb.QueryOption{}
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
 	assert.Equal(t, q, expectedRequest)
 }
 
-func TestScan_Least(t *testing.T) {
-	expectedJSON := []byte(`
-{
-  "TableName": "SCAN_TABLE"
-}
-`)
-	q := dynamodb.ScanRequest{
-		TableName: "SCAN_TABLE",
-	}
-	expectedRequest := dynamodb.ScanRequest{}
-	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
-		t.Fail()
-	}
-	assert.Equal(t, q, expectedRequest)
-}
-
-func TestScan_Full(t *testing.T) {
+func TestScanOption(t *testing.T) {
 	expectedJSON := []byte(`
 {
   "AttributesToGet": [
@@ -720,11 +453,10 @@ func TestScan_Full(t *testing.T) {
   },
   "Segment": 1,
   "Select": "COUNT",
-  "TableName": "REQUEST_TABLE",
   "TotalSegments": 100
 }
 `)
-	q := dynamodb.ScanRequest{
+	q := dynamodb.ScanOption{
 		AttributesToGet:     []string{"ATTR1", "ATTR2"},
 		ConditionalOperator: dynamodb.CondOpAnd,
 		ExclusiveStartKey: map[string]dynamodb.AttributeValue{
@@ -747,45 +479,17 @@ func TestScan_Full(t *testing.T) {
 			},
 		},
 		Segment:       1,
-		Select:        dynamodb.SelectCount,
-		TableName:     "REQUEST_TABLE",
 		TotalSegments: 100,
+		Select:        dynamodb.SelectCount,
 	}
-	expectedRequest := dynamodb.ScanRequest{}
+	expectedRequest := dynamodb.ScanOption{}
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
 	assert.Equal(t, q, expectedRequest)
 }
 
-func TestUpdateItemRequest_Least(t *testing.T) {
-	expectedJSON := []byte(`
-{
-  "Key": {
-    "UPDATE_ITEM_KEY": {
-      "S": "STRING"
-    }
-  },
-  "TableName": "UPDATE_ITEM_TABLE"
-}
-`)
-	q := dynamodb.UpdateItemRequest{
-		Key: map[string]dynamodb.AttributeValue{
-			"UPDATE_ITEM_KEY": dynamodb.AttributeValue{
-				Type: dynamodb.TypeString,
-				Data: []dynamodb.AttributeData{"STRING"},
-			},
-		},
-		TableName: "UPDATE_ITEM_TABLE",
-	}
-	expectedRequest := dynamodb.UpdateItemRequest{}
-	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
-		t.Fail()
-	}
-	assert.Equal(t, q, expectedRequest)
-}
-
-func TestUpdateItemRequest_Full(t *testing.T) {
+func TestUpdateItemOption(t *testing.T) {
 	expectedJSON := []byte(`
 {
   "AttributeUpdates": {
@@ -814,18 +518,12 @@ func TestUpdateItemRequest_Full(t *testing.T) {
       "Exists": true
     }
   },
-  "Key": {
-    "UPDATE_ITEM_KEY": {
-      "S": "STRING"
-    }
-  },
   "ReturnConsumedCapacity": "TOTAL",
   "ReturnItemCollectionMetrics": "NONE",
-  "ReturnValues": "ALL_OLD",
-  "TableName": "UPDATE_ITEM_TABLE"
+  "ReturnValues": "ALL_OLD"
 }
 `)
-	q := dynamodb.UpdateItemRequest{
+	q := dynamodb.UpdateItemOption{
 		AttributeUpdates: map[string]dynamodb.AttributeUpdate{
 			"ATTR1": dynamodb.AttributeUpdate{
 				Action: dynamodb.ActionPut,
@@ -851,41 +549,18 @@ func TestUpdateItemRequest_Full(t *testing.T) {
 				Exists: false,
 			},
 		},
-		Key: map[string]dynamodb.AttributeValue{
-			"UPDATE_ITEM_KEY": dynamodb.AttributeValue{
-				Type: dynamodb.TypeString,
-				Data: []dynamodb.AttributeData{"STRING"},
-			},
-		},
 		ReturnConsumedCapacity:      dynamodb.ConsumedCapTotal,
 		ReturnItemCollectionMetrics: dynamodb.ReturnItemCollectionMetricsNone,
 		ReturnValues:                dynamodb.ReturnValuesAllOld,
-		TableName:                   "UPDATE_ITEM_TABLE",
 	}
-	expectedRequest := dynamodb.UpdateItemRequest{}
+	expectedRequest := dynamodb.UpdateItemOption{}
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
 	assert.Equal(t, q, expectedRequest)
 }
 
-func TestUpdateTableRequest_Least(t *testing.T) {
-	expectedJSON := []byte(`
-{
-	"TableName": "UPDATE_TABLE_REQUEST_FULL"
-}
-`)
-	q := dynamodb.UpdateTableRequest{
-		TableName: "UPDATE_TABLE_REQUEST_FULL",
-	}
-	expectedRequest := dynamodb.UpdateTableRequest{}
-	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
-		t.Fail()
-	}
-	assert.Equal(t, q, expectedRequest)
-}
-
-func TestUpdateTableRequest_Full(t *testing.T) {
+func TestUpdateTableOption(t *testing.T) {
 	expectedJSON := []byte(`
 {
 	"GlobalSecondaryIndexUpdates": [
@@ -911,12 +586,10 @@ func TestUpdateTableRequest_Full(t *testing.T) {
 	"ProvisionedThroughput": {
 		"ReadCapacityUnits": 10,
 		"WriteCapacityUnits": 10
-	},
-	"TableName": "UPDATE_TABLE_REQUEST_FULL"
+	}
 }
 `)
-	q := dynamodb.UpdateTableRequest{
-		TableName: "UPDATE_TABLE_REQUEST_FULL",
+	q := dynamodb.UpdateTableOption{
 		GlobalSecondaryIndexUpdates: []dynamodb.GlobalSecondaryIndexUpdate{
 			dynamodb.GlobalSecondaryIndexUpdate{
 				Update: dynamodb.GlobalSecondaryIndexAction{
@@ -942,7 +615,7 @@ func TestUpdateTableRequest_Full(t *testing.T) {
 			WriteCapacityUnits: 10,
 		},
 	}
-	expectedRequest := dynamodb.UpdateTableRequest{}
+	expectedRequest := dynamodb.UpdateTableOption{}
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}

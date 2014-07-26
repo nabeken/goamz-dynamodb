@@ -404,6 +404,18 @@ type ScanResult struct {
 	ScannedCount     int64
 }
 
+type Table struct {
+	AttributeDefinitions  []AttributeDefinition
+	KeySchema             []KeySchemaElement
+	ProvisionedThroughput ProvisionedThroughput
+	Name                  string `json:"TableName"`
+}
+
+type TableOption struct {
+	GlobalSecondaryIndexes []GlobalSecondaryIndex `json:",omitempty"`
+	LocalSecondaryIndexes  []LocalSecondaryIndex  `json:",omitempty"`
+}
+
 type TableDescription struct {
 	AttributeDefinitions []AttributeDefinition `json:",omitempty"`
 	// CreationDateTime looks like '1405152783.735'

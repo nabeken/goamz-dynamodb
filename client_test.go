@@ -10,17 +10,9 @@ import (
 	"github.com/nabeken/goamz-dynamodb"
 )
 
-type ClientTestSuite struct {
-	suite.Suite
-	DynamoDBCommonSuite
-
-	items map[string]dynamodb.AttributeValue
-}
-
-func (s *ClientTestSuite) SetupSuite() {
-	s.t = s.T()
-	s.CreateTableRequest = &dynamodb.CreateTableRequest{
-		TableName: "DynamoDBTest",
+func newTestTable(name string) *dynamodb.Table {
+	return &dynamodb.Table{
+		Name: name,
 		AttributeDefinitions: []dynamodb.AttributeDefinition{
 			dynamodb.AttributeDefinition{"TestHashKey", dynamodb.TypeString},
 			dynamodb.AttributeDefinition{"TestRangeKey", dynamodb.TypeNumber},
@@ -30,11 +22,23 @@ func (s *ClientTestSuite) SetupSuite() {
 			dynamodb.KeySchemaElement{"TestRangeKey", dynamodb.KeyTypeRange},
 		},
 		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
-			ReadCapacityUnits:  1,
-			WriteCapacityUnits: 1,
+			ReadCapacityUnits:  10,
+			WriteCapacityUnits: 10,
 		},
 	}
-	s.items = map[string]dynamodb.AttributeValue{
+}
+
+type ClientTestSuite struct {
+	suite.Suite
+	DynamoDBCommonSuite
+
+	items map[string]dynamodb.AttributeValue
+}
+
+func (s *ClientTestSuite) SetupSuite() {
+	s.t = s.T()
+	s.Table = newTestTable("DynamoDBTest")
+	s.items = dynamodb.Item{
 		"TestHashKey":  dynamodb.NewString("HashKeyVal"),
 		"TestRangeKey": dynamodb.NewNumber(1),
 	}
@@ -42,48 +46,35 @@ func (s *ClientTestSuite) SetupSuite() {
 	s.SetupDB()
 }
 
-func (s *ClientTestSuite) putTestItem() error {
-	pir := &dynamodb.PutItemRequest{
-		Item:      s.items,
-		TableName: s.CreateTableRequest.TableName,
+func (s *ClientTestSuite) putTestItem() {
+	_, err := s.c.PutItem(s.Table.Name, s.items, nil)
+	if err != nil {
+		s.T().Fatal(err)
 	}
-	_, err := s.c.PutItem(pir)
-	return err
 }
 
 func (s *ClientTestSuite) addAttribute(key string, attr dynamodb.AttributeValue) error {
-	items := map[string]dynamodb.AttributeValue{}
+	items := dynamodb.Item{}
 	for k := range s.items {
 		items[k] = s.items[k]
 	}
 	items[key] = attr
-	pir := &dynamodb.PutItemRequest{
-		Item:      items,
-		TableName: s.CreateTableRequest.TableName,
-	}
-	_, err := s.c.PutItem(pir)
+	_, err := s.c.PutItem(s.Table.Name, items, nil)
 	return err
 }
 
 func (s *ClientTestSuite) TestListTables() {
-	ret, err := s.c.ListTables(&dynamodb.ListTablesRequest{})
+	ret, err := s.c.ListTables(nil)
 	if err != nil {
 		s.T().Fatal(err)
 	}
 	s.Equal(len(ret.TableNames), 1)
-	s.True(findTableByName(ret.TableNames, s.CreateTableRequest.TableName))
+	s.True(findTableByName(ret.TableNames, s.Table.Name))
 }
 
 func (s *ClientTestSuite) TestGetItem() {
-	if err := s.putTestItem(); err != nil {
-		s.T().Fatal(err)
-	}
-
-	gir := &dynamodb.GetItemRequest{
-		Key:       s.items,
-		TableName: s.CreateTableRequest.TableName,
-	}
-	ret, err := s.c.GetItem(gir)
+	s.putTestItem()
+	ret, err := s.c.GetItem(s.Table.Name, s.items, nil)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -92,34 +83,26 @@ func (s *ClientTestSuite) TestGetItem() {
 }
 
 func (s *ClientTestSuite) TestPutUpdateItem() {
-	if err := s.putTestItem(); err != nil {
-		s.T().Fatal(err)
-	}
+	s.putTestItem()
 
 	attr := dynamodb.NewNumber(1)
 	if err := s.addAttribute("ATTR", attr); err != nil {
 		s.T().Fatal(err)
 	}
 
-	uir := &dynamodb.UpdateItemRequest{
+	uiro := &dynamodb.UpdateItemOption{
 		AttributeUpdates: map[string]dynamodb.AttributeUpdate{
 			"ATTR": dynamodb.AttributeUpdate{
 				Action: dynamodb.ActionAdd,
 				Value:  dynamodb.NewNumber(1),
 			},
 		},
-		Key:       s.items,
-		TableName: s.CreateTableRequest.TableName,
 	}
-	if _, err := s.c.UpdateItem(uir); err != nil {
+	if _, err := s.c.UpdateItem(s.Table.Name, s.items, uiro); err != nil {
 		s.T().Fatal(err)
 	}
 
-	gir := &dynamodb.GetItemRequest{
-		Key:       s.items,
-		TableName: s.CreateTableRequest.TableName,
-	}
-	ret, err := s.c.GetItem(gir)
+	ret, err := s.c.GetItem(s.Table.Name, s.items, nil)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -135,12 +118,23 @@ type ClientGSITestSuite struct {
 
 func (s *ClientGSITestSuite) SetupSuite() {
 	s.t = s.T()
-	s.CreateTableRequest = &dynamodb.CreateTableRequest{
+	s.Table = &dynamodb.Table{
 		AttributeDefinitions: []dynamodb.AttributeDefinition{
 			dynamodb.AttributeDefinition{"UserId", dynamodb.TypeString},
 			dynamodb.AttributeDefinition{"OSType", dynamodb.TypeString},
 			dynamodb.AttributeDefinition{"IMSI", dynamodb.TypeString},
 		},
+		KeySchema: []dynamodb.KeySchemaElement{
+			dynamodb.KeySchemaElement{"UserId", dynamodb.KeyTypeHash},
+			dynamodb.KeySchemaElement{"OSType", dynamodb.KeyTypeRange},
+		},
+		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
+			ReadCapacityUnits:  5,
+			WriteCapacityUnits: 5,
+		},
+		Name: "DynamoDBTestGSI",
+	}
+	s.TableOption = &dynamodb.TableOption{
 		GlobalSecondaryIndexes: []dynamodb.GlobalSecondaryIndex{
 			dynamodb.GlobalSecondaryIndex{
 				IndexName: "IMSIIndex",
@@ -156,15 +150,6 @@ func (s *ClientGSITestSuite) SetupSuite() {
 				},
 			},
 		},
-		KeySchema: []dynamodb.KeySchemaElement{
-			dynamodb.KeySchemaElement{"UserId", dynamodb.KeyTypeHash},
-			dynamodb.KeySchemaElement{"OSType", dynamodb.KeyTypeRange},
-		},
-		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
-			ReadCapacityUnits:  5,
-			WriteCapacityUnits: 5,
-		},
-		TableName: "DynamoDBTestGSI",
 	}
 
 	s.CreateNewTable = true
@@ -172,8 +157,7 @@ func (s *ClientGSITestSuite) SetupSuite() {
 }
 
 func (s *ClientGSITestSuite) TestDescribeTable() {
-	td, err := s.c.DescribeTable(
-		&dynamodb.DescribeTableRequest{TableName: s.CreateTableRequest.TableName})
+	td, err := s.c.DescribeTable(s.Table.Name)
 	if !s.NoError(err) {
 		s.T().FailNow()
 	}
@@ -182,7 +166,7 @@ func (s *ClientGSITestSuite) TestDescribeTable() {
 }
 
 func (s *ClientGSITestSuite) TestUpdateTable() {
-	_, err := s.c.UpdateTable(&dynamodb.UpdateTableRequest{
+	utro := &dynamodb.UpdateTableOption{
 		GlobalSecondaryIndexUpdates: []dynamodb.GlobalSecondaryIndexUpdate{
 			dynamodb.GlobalSecondaryIndexUpdate{
 				Update: dynamodb.GlobalSecondaryIndexAction{
@@ -198,12 +182,11 @@ func (s *ClientGSITestSuite) TestUpdateTable() {
 			ReadCapacityUnits:  10,
 			WriteCapacityUnits: 10,
 		},
-		TableName: s.CreateTableRequest.TableName,
-	})
+	}
+	_, err := s.c.UpdateTable(s.Table.Name, utro)
 
 	describe := func() (*dynamodb.TableDescription, error) {
-		td, err := s.c.DescribeTable(
-			&dynamodb.DescribeTableRequest{TableName: s.CreateTableRequest.TableName})
+		td, err := s.c.DescribeTable(s.Table.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -254,21 +237,7 @@ type ScanTestSuite struct {
 
 func (s *ScanTestSuite) SetupSuite() {
 	s.t = s.T()
-	s.CreateTableRequest = &dynamodb.CreateTableRequest{
-		TableName: "DynamoDBTestScan",
-		AttributeDefinitions: []dynamodb.AttributeDefinition{
-			dynamodb.AttributeDefinition{"TestHashKey", dynamodb.TypeString},
-			dynamodb.AttributeDefinition{"TestRangeKey", dynamodb.TypeNumber},
-		},
-		KeySchema: []dynamodb.KeySchemaElement{
-			dynamodb.KeySchemaElement{"TestHashKey", dynamodb.KeyTypeHash},
-			dynamodb.KeySchemaElement{"TestRangeKey", dynamodb.KeyTypeRange},
-		},
-		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
-			ReadCapacityUnits:  1,
-			WriteCapacityUnits: 10,
-		},
-	}
+	s.Table = newTestTable("DynamoDBTestScan")
 	s.CreateNewTable = true
 	s.numOfRecords = 100
 	s.SetupDB()
@@ -278,16 +247,13 @@ func (s *ScanTestSuite) createDummy() {
 	// Create dummy records
 	for i := 0; i < s.numOfRecords; i++ {
 		ai := strconv.Itoa(i)
-		items := map[string]dynamodb.AttributeValue{
+		items := dynamodb.Item{
 			"TestHashKey":  dynamodb.NewString("HashKeyVal" + ai),
 			"TestRangeKey": dynamodb.NewNumber(i),
 			"Attr":         dynamodb.NewNumber(i),
 		}
-		pir := &dynamodb.PutItemRequest{
-			Item:      items,
-			TableName: s.CreateTableRequest.TableName,
-		}
-		if _, err := s.c.PutItem(pir); err != nil {
+		_, err := s.c.PutItem(s.Table.Name, items, nil)
+		if err != nil {
 			s.T().Fatal(err)
 		}
 	}
@@ -295,7 +261,7 @@ func (s *ScanTestSuite) createDummy() {
 
 func (s *ScanTestSuite) TestScan() {
 	s.createDummy()
-	ret, err := s.c.Scan(&dynamodb.ScanRequest{TableName: s.CreateTableRequest.TableName})
+	ret, err := s.c.Scan(s.Table.Name, nil)
 	if !s.NoError(err) {
 		s.T().FailNow()
 	}
@@ -313,10 +279,10 @@ func (s *ScanTestSuite) TestScanFilter() {
 		},
 	}
 
-	ret, err := s.c.Scan(&dynamodb.ScanRequest{
+	sro := &dynamodb.ScanOption{
 		ScanFilter: sf,
-		TableName:  s.CreateTableRequest.TableName,
-	})
+	}
+	ret, err := s.c.Scan(s.Table.Name, sro)
 	if !s.NoError(err) {
 		s.T().FailNow()
 	}
@@ -337,21 +303,7 @@ type QueryTestSuite struct {
 
 func (s *QueryTestSuite) SetupSuite() {
 	s.t = s.T()
-	s.CreateTableRequest = &dynamodb.CreateTableRequest{
-		TableName: "DynamoDBTestQuery",
-		AttributeDefinitions: []dynamodb.AttributeDefinition{
-			dynamodb.AttributeDefinition{"TestHashKey", dynamodb.TypeString},
-			dynamodb.AttributeDefinition{"TestRangeKey", dynamodb.TypeNumber},
-		},
-		KeySchema: []dynamodb.KeySchemaElement{
-			dynamodb.KeySchemaElement{"TestHashKey", "HASH"},
-			dynamodb.KeySchemaElement{"TestRangeKey", "RANGE"},
-		},
-		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
-			ReadCapacityUnits:  10,
-			WriteCapacityUnits: 10,
-		},
-	}
+	s.Table = newTestTable("DynamoDBTestQuery")
 	s.CreateNewTable = true
 	s.numOfRecords = 100
 	s.SetupDB()
@@ -365,11 +317,8 @@ func (s *QueryTestSuite) createDummy() {
 			"TestRangeKey": dynamodb.NewNumber(i),
 			"Attr":         dynamodb.NewNumber(i),
 		}
-		pir := &dynamodb.PutItemRequest{
-			Item:      items,
-			TableName: s.CreateTableRequest.TableName,
-		}
-		if _, err := s.c.PutItem(pir); err != nil {
+		_, err := s.c.PutItem(s.Table.Name, items, nil)
+		if err != nil {
 			s.T().Fatal(err)
 		}
 	}
@@ -377,7 +326,7 @@ func (s *QueryTestSuite) createDummy() {
 
 func (s *QueryTestSuite) TestQuery() {
 	s.createDummy()
-	kc := dynamodb.KeyConditions{
+	kc := &dynamodb.KeyConditions{
 		"TestHashKey": dynamodb.Condition{
 			AttributeValueList: []dynamodb.AttributeValue{
 				dynamodb.NewString("HashKeyVal"),
@@ -391,10 +340,7 @@ func (s *QueryTestSuite) TestQuery() {
 			ComparisonOperator: dynamodb.CmpOpLT,
 		},
 	}
-	ret, err := s.c.Query(&dynamodb.QueryRequest{
-		KeyConditions: kc,
-		TableName:     s.CreateTableRequest.TableName,
-	})
+	ret, err := s.c.Query(s.Table.Name, kc, nil)
 	if !s.NoError(err) {
 		s.T().FailNow()
 	}
@@ -404,7 +350,7 @@ func (s *QueryTestSuite) TestQuery() {
 
 func (s *QueryTestSuite) TestLimitedQuery() {
 	s.createDummy()
-	kc := dynamodb.KeyConditions{
+	kc := &dynamodb.KeyConditions{
 		"TestHashKey": dynamodb.Condition{
 			AttributeValueList: []dynamodb.AttributeValue{
 				dynamodb.NewString("HashKeyVal"),
@@ -413,11 +359,10 @@ func (s *QueryTestSuite) TestLimitedQuery() {
 		},
 	}
 
-	ret, err := s.c.Query(&dynamodb.QueryRequest{
-		KeyConditions: kc,
-		Limit:         1,
-		TableName:     s.CreateTableRequest.TableName,
-	})
+	qro := &dynamodb.QueryOption{
+		Limit: 1,
+	}
+	ret, err := s.c.Query(s.Table.Name, kc, qro)
 	if !s.NoError(err) {
 		s.T().FailNow()
 	}
@@ -434,8 +379,8 @@ type QueryOnIndexSuite struct {
 
 func (s *QueryOnIndexSuite) SetupSuite() {
 	s.t = s.T()
-	s.CreateTableRequest = &dynamodb.CreateTableRequest{
-		TableName: "DynamoDBTestQueryOnIndex",
+	s.Table = &dynamodb.Table{
+		Name: "DynamoDBTestQueryOnIndex",
 		AttributeDefinitions: []dynamodb.AttributeDefinition{
 			dynamodb.AttributeDefinition{"TestHashKey", dynamodb.TypeString},
 			dynamodb.AttributeDefinition{"TestRangeKey", dynamodb.TypeNumber},
@@ -450,6 +395,8 @@ func (s *QueryOnIndexSuite) SetupSuite() {
 			ReadCapacityUnits:  10,
 			WriteCapacityUnits: 10,
 		},
+	}
+	s.TableOption = &dynamodb.TableOption{
 		GlobalSecondaryIndexes: []dynamodb.GlobalSecondaryIndex{
 			dynamodb.GlobalSecondaryIndex{
 				IndexName: "GSI",
@@ -493,11 +440,8 @@ func (s *QueryOnIndexSuite) createDummy() {
 			"GSIKey":       dynamodb.NewNumber(i),
 			"LSIKey":       dynamodb.NewNumber(i),
 		}
-		pir := &dynamodb.PutItemRequest{
-			Item:      items,
-			TableName: s.CreateTableRequest.TableName,
-		}
-		if _, err := s.c.PutItem(pir); err != nil {
+		_, err := s.c.PutItem(s.Table.Name, items, nil)
+		if err != nil {
 			s.T().Fatal(err)
 		}
 	}
@@ -505,7 +449,7 @@ func (s *QueryOnIndexSuite) createDummy() {
 
 func (s *QueryOnIndexSuite) TestQueryOnIndex() {
 	s.createDummy()
-	kc := dynamodb.KeyConditions{
+	kc := &dynamodb.KeyConditions{
 		"GSIKey": dynamodb.Condition{
 			AttributeValueList: []dynamodb.AttributeValue{
 				dynamodb.NewNumber(80),
@@ -513,11 +457,10 @@ func (s *QueryOnIndexSuite) TestQueryOnIndex() {
 			ComparisonOperator: dynamodb.CmpOpEQ,
 		},
 	}
-	ret, err := s.c.Query(&dynamodb.QueryRequest{
-		IndexName:     "GSI",
-		KeyConditions: kc,
-		TableName:     s.CreateTableRequest.TableName,
-	})
+	qro := &dynamodb.QueryOption{
+		IndexName: "GSI",
+	}
+	ret, err := s.c.Query(s.Table.Name, kc, qro)
 	if !s.NoError(err) {
 		s.T().FailNow()
 	}
@@ -527,7 +470,7 @@ func (s *QueryOnIndexSuite) TestQueryOnIndex() {
 
 func (s *QueryOnIndexSuite) TestLimitedQueryOnIndex() {
 	s.createDummy()
-	kc := dynamodb.KeyConditions{
+	kc := &dynamodb.KeyConditions{
 		"TestHashKey": dynamodb.Condition{
 			AttributeValueList: []dynamodb.AttributeValue{
 				dynamodb.NewString("HashKeyVal"),
@@ -542,12 +485,11 @@ func (s *QueryOnIndexSuite) TestLimitedQueryOnIndex() {
 		},
 	}
 
-	ret, err := s.c.Query(&dynamodb.QueryRequest{
-		IndexName:     "LSI",
-		KeyConditions: kc,
-		Limit:         5,
-		TableName:     s.CreateTableRequest.TableName,
-	})
+	qro := &dynamodb.QueryOption{
+		IndexName: "LSI",
+		Limit:     5,
+	}
+	ret, err := s.c.Query(s.Table.Name, kc, qro)
 	if !s.NoError(err) {
 		s.T().FailNow()
 	}
@@ -564,21 +506,7 @@ type BatchTestSuite struct {
 
 func (s *BatchTestSuite) SetupSuite() {
 	s.t = s.T()
-	s.CreateTableRequest = &dynamodb.CreateTableRequest{
-		TableName: "DynamoDBTestBatch",
-		AttributeDefinitions: []dynamodb.AttributeDefinition{
-			dynamodb.AttributeDefinition{"TestHashKey", dynamodb.TypeString},
-			dynamodb.AttributeDefinition{"TestRangeKey", dynamodb.TypeNumber},
-		},
-		KeySchema: []dynamodb.KeySchemaElement{
-			dynamodb.KeySchemaElement{"TestHashKey", dynamodb.KeyTypeHash},
-			dynamodb.KeySchemaElement{"TestRangeKey", dynamodb.KeyTypeRange},
-		},
-		ProvisionedThroughput: dynamodb.ProvisionedThroughput{
-			ReadCapacityUnits:  10,
-			WriteCapacityUnits: 10,
-		},
-	}
+	s.Table = newTestTable("DynamoDBTestBatch")
 	s.CreateNewTable = true
 	s.numOfRecords = 100
 	s.SetupDB()
@@ -593,11 +521,8 @@ func (s *BatchTestSuite) createDummy() {
 			"TestRangeKey": dynamodb.NewNumber(i),
 			"Attr":         dynamodb.NewNumber(i),
 		}
-		pir := &dynamodb.PutItemRequest{
-			Item:      items,
-			TableName: s.CreateTableRequest.TableName,
-		}
-		if _, err := s.c.PutItem(pir); err != nil {
+		_, err := s.c.PutItem(s.Table.Name, items, nil)
+		if err != nil {
 			s.T().Fatal(err)
 		}
 	}
@@ -605,27 +530,25 @@ func (s *BatchTestSuite) createDummy() {
 
 func (s *BatchTestSuite) TestBatchGetItem() {
 	s.createDummy()
-	bgir := &dynamodb.BatchGetItemRequest{
-		RequestItems: map[string]dynamodb.KeysAndAttributes{
-			s.CreateTableRequest.TableName: dynamodb.KeysAndAttributes{
-				Keys: []map[string]dynamodb.AttributeValue{
-					map[string]dynamodb.AttributeValue{
-						"TestHashKey":  dynamodb.NewString("HashKeyVal0"),
-						"TestRangeKey": dynamodb.NewNumber(0),
-					},
-					map[string]dynamodb.AttributeValue{
-						"TestHashKey":  dynamodb.NewString("HashKeyVal1"),
-						"TestRangeKey": dynamodb.NewNumber(1),
-					},
-					map[string]dynamodb.AttributeValue{
-						"TestHashKey":  dynamodb.NewString("HashKeyVal2"),
-						"TestRangeKey": dynamodb.NewNumber(2),
-					},
+	items := map[string]dynamodb.KeysAndAttributes{
+		s.Table.Name: dynamodb.KeysAndAttributes{
+			Keys: []map[string]dynamodb.AttributeValue{
+				map[string]dynamodb.AttributeValue{
+					"TestHashKey":  dynamodb.NewString("HashKeyVal0"),
+					"TestRangeKey": dynamodb.NewNumber(0),
+				},
+				map[string]dynamodb.AttributeValue{
+					"TestHashKey":  dynamodb.NewString("HashKeyVal1"),
+					"TestRangeKey": dynamodb.NewNumber(1),
+				},
+				map[string]dynamodb.AttributeValue{
+					"TestHashKey":  dynamodb.NewString("HashKeyVal2"),
+					"TestRangeKey": dynamodb.NewNumber(2),
 				},
 			},
 		},
 	}
-	ret, err := s.c.BatchGetItem(bgir)
+	ret, err := s.c.BatchGetItem(items, nil)
 	if !s.NoError(err) {
 		s.T().FailNow()
 	}
@@ -652,23 +575,22 @@ func (s *BatchTestSuite) TestBatchWrite() {
 			},
 		})
 	}
-	ret, err := s.c.BatchWriteItem(&dynamodb.BatchWriteItemRequest{
-		RequestItems: map[string][]dynamodb.WriteRequest{
-			s.CreateTableRequest.TableName: wr,
-		},
-	})
+	items := map[string][]dynamodb.WriteRequest{
+		s.Table.Name: wr,
+	}
+	ret, err := s.c.BatchWriteItem(items, nil)
 	if !s.NoError(err) {
 		s.T().Fatal()
 	}
 
 	// No unprocessed item
-	s.Equal(0, len(ret.UnprocessedItems[s.CreateTableRequest.TableName]))
+	s.Equal(0, len(ret.UnprocessedItems[s.Table.Name]))
 
-	scanRet, err := s.c.Scan(&dynamodb.ScanRequest{TableName: s.CreateTableRequest.TableName})
-	if !s.NoError(err) {
+	sret, serr := s.c.Scan(s.Table.Name, nil)
+	if !s.NoError(serr) {
 		s.T().Fatal()
 	}
-	s.Equal(90, scanRet.Count)
+	s.Equal(90, sret.Count)
 }
 
 func TestBatch(t *testing.T) {
