@@ -57,7 +57,7 @@ func TestCreateTable_Least(t *testing.T) {
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
-	assert.Equal(t, q, expectedRequest)
+	assert.Equal(t, expectedRequest, q)
 }
 
 func TestCreateTable_Full(t *testing.T) {
@@ -239,7 +239,7 @@ func TestCreateTable_Full(t *testing.T) {
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
-	assert.Equal(t, q, expectedRequest)
+	assert.Equal(t, expectedRequest, q)
 }
 
 func TestDeleteItemOption(t *testing.T) {
@@ -281,7 +281,7 @@ func TestDeleteItemOption(t *testing.T) {
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
-	assert.Equal(t, q, expectedRequest)
+	assert.Equal(t, expectedRequest, q)
 }
 
 func TestGetItemOption(t *testing.T) {
@@ -304,7 +304,7 @@ func TestGetItemOption(t *testing.T) {
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
-	assert.Equal(t, q, expectedRequest)
+	assert.Equal(t, expectedRequest, q)
 }
 
 func TestListTableOption(t *testing.T) {
@@ -322,7 +322,7 @@ func TestListTableOption(t *testing.T) {
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
-	assert.Equal(t, q, expectedRequest)
+	assert.Equal(t, expectedRequest, q)
 }
 
 func TestPutItemOption(t *testing.T) {
@@ -364,7 +364,7 @@ func TestPutItemOption(t *testing.T) {
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
-	assert.Equal(t, q, expectedRequest)
+	assert.Equal(t, expectedRequest, q)
 }
 
 func TestQueryOption(t *testing.T) {
@@ -423,7 +423,7 @@ func TestQueryOption(t *testing.T) {
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
-	assert.Equal(t, q, expectedRequest)
+	assert.Equal(t, expectedRequest, q)
 }
 
 func TestScanOption(t *testing.T) {
@@ -486,7 +486,7 @@ func TestScanOption(t *testing.T) {
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
-	assert.Equal(t, q, expectedRequest)
+	assert.Equal(t, expectedRequest, q)
 }
 
 func TestUpdateItemOption(t *testing.T) {
@@ -557,7 +557,7 @@ func TestUpdateItemOption(t *testing.T) {
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
-	assert.Equal(t, q, expectedRequest)
+	assert.Equal(t, expectedRequest, q)
 }
 
 func TestUpdateTableOption(t *testing.T) {
@@ -619,5 +619,5 @@ func TestUpdateTableOption(t *testing.T) {
 	if !assert.NoError(t, json.Unmarshal(expectedJSON, &expectedRequest)) {
 		t.Fail()
 	}
-	assert.Equal(t, q, expectedRequest)
+	assert.Equal(t, expectedRequest, q)
 }
