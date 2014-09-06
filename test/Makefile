@@ -10,8 +10,8 @@ venv:
 dynalite:
 	./venv/bin/supervisorctl start dynalite
 
-dynamodblocal:
-	./venv/bin/supervisorctl start dynamodblocal
+dynamodb_local:
+	./venv/bin/supervisorctl start dynamodb_local
 
 stop:
 	./venv/bin/supervisorctl stop all

@@ -46,8 +46,9 @@ func handleAction(action actionHandler) (done chan struct{}) {
 }
 
 type DynamoDBCommonSuite struct {
-	CreateTableRequest *dynamodb.CreateTableRequest
-	CreateNewTable     bool
+	Table          *dynamodb.Table
+	TableOption    *dynamodb.TableOption
+	CreateNewTable bool
 
 	c *dynamodb.Client
 	t *testing.T
@@ -66,36 +67,33 @@ func (s *DynamoDBCommonSuite) TearDownTest() {
 
 // DeleteAllItems deletes all items in the table
 func (s *DynamoDBCommonSuite) DeleteAllItems() {
-	ret, err := s.c.Scan(&dynamodb.ScanRequest{TableName: s.CreateTableRequest.TableName})
-	if err != nil {
-		s.t.Error(err)
+	sret, serr := s.c.Scan(s.Table.Name, nil)
+	if serr != nil {
+		s.t.Error(serr)
 		return
 	}
-	if ret.Count == 0 {
+	if sret.Count == 0 {
 		return
 	}
 
-	dir := &dynamodb.DeleteItemRequest{
-		Key:       make(map[string]dynamodb.AttributeValue),
-		TableName: s.CreateTableRequest.TableName,
-	}
-	for _, ks := range s.CreateTableRequest.KeySchema {
-		for i := range ret.Items {
-			if v, ok := ret.Items[i][ks.AttributeName]; ok {
-				dir.Key[ks.AttributeName] = v
+	key := map[string]dynamodb.AttributeValue{}
+	for _, ks := range s.Table.KeySchema {
+		for i := range sret.Items {
+			if v, ok := sret.Items[i][ks.AttributeName]; ok {
+				key[ks.AttributeName] = v
 			}
 		}
 	}
-	if _, err := s.c.DeleteItem(dir); err != nil {
+	if _, err := s.c.DeleteItem(s.Table.Name, key, nil); err != nil {
 		s.t.Error(err)
 		return
 	}
 }
 
 func (s *DynamoDBCommonSuite) CreateTable() {
-	_, cerr := s.c.CreateTable(s.CreateTableRequest)
-	if cerr != nil {
-		s.t.Error(cerr)
+	_, err := s.c.CreateTable(s.Table, s.TableOption)
+	if err != nil {
+		s.t.Error(err)
 		return
 	}
 	s.WaitUntilStatus(dynamodb.TableStatusActive)
@@ -103,31 +101,28 @@ func (s *DynamoDBCommonSuite) CreateTable() {
 
 func (s *DynamoDBCommonSuite) DeleteTable() {
 	// check whether the table exists
-	if ret, err := s.c.ListTables(&dynamodb.ListTablesRequest{}); err != nil {
+	ret, err := s.c.ListTables(nil)
+	if err != nil {
 		s.t.Error(err)
 		return
 	} else {
-		if !findTableByName(ret.TableNames, s.CreateTableRequest.TableName) {
+		if !findTableByName(ret.TableNames, s.Table.Name) {
 			return
 		}
 	}
 
 	// Delete the table and wait
-	if _, err := s.c.DeleteTable(
-		&dynamodb.DeleteTableRequest{s.CreateTableRequest.TableName}); err != nil {
-		s.t.Error(err)
-		return
-	}
+	s.c.DeleteTable(s.Table.Name)
 
 	timeoutChan := time.After(timeout)
 	done := handleAction(func(done chan struct{}) {
-		ret, err := s.c.ListTables(&dynamodb.ListTablesRequest{})
+		ret, err := s.c.ListTables(nil)
 		if err != nil {
 			s.t.Error(err)
 			close(done)
 			return
 		}
-		if findTableByName(ret.TableNames, s.CreateTableRequest.TableName) {
+		if findTableByName(ret.TableNames, s.Table.Name) {
 			time.Sleep(5 * time.Second)
 		} else {
 			close(done)
@@ -147,8 +142,7 @@ func (s *DynamoDBCommonSuite) WaitUntilStatus(status dynamodb.TableStatus) {
 	// We should wait until the table is in specified status because a real DynamoDB has some delay for ready
 	timeoutChan := time.After(timeout)
 	done := handleAction(func(done chan struct{}) {
-		desc, err := s.c.DescribeTable(
-			&dynamodb.DescribeTableRequest{s.CreateTableRequest.TableName})
+		desc, err := s.c.DescribeTable(s.Table.Name)
 		if err != nil {
 			s.t.Error(err)
 			close(done)

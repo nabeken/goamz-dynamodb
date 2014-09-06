@@ -10,103 +10,198 @@ import (
 	"github.com/crowdmob/goamz/aws"
 )
 
+/*
+http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/Welcome.html
+List of actions as of API version 2012-08-10
+	BatchGetItem
+	BatchWriteItem
+	CreateTable
+	DeleteItem
+	DeleteTable
+	DescribeTable
+	GetItem
+	ListTables
+	PutItem
+	Query
+	Scan
+	UpdateItem
+	UpdateTable
+*/
+
 type Client struct {
 	Auth       aws.Auth
 	Region     aws.Region
 	HTTPClient http.Client
 }
 
-func (c *Client) BatchGetItem(r *BatchGetItemRequest) (*BatchGetItemResult, error) {
+func (c *Client) BatchGetItem(items map[string]KeysAndAttributes, bopt *BatchGetItemOption) (*BatchGetItemResult, error) {
 	ret := &BatchGetItemResult{}
-	err := c.Do(&Request{"BatchGetItem", r}).Scan(ret)
+	err := c.Do(&RawRequest{"BatchGetItem", struct {
+		RequestItems map[string]KeysAndAttributes
+		*BatchGetItemOption
+	}{
+		items,
+		bopt,
+	}}).Scan(ret)
 	return ret, err
 }
 
-func (c *Client) BatchWriteItem(r *BatchWriteItemRequest) (*BatchWriteItemResult, error) {
+func (c *Client) BatchWriteItem(items map[string][]WriteRequest, bopt *BatchWriteItemOption) (*BatchWriteItemResult, error) {
 	ret := &BatchWriteItemResult{}
-	err := c.Do(&Request{"BatchWriteItem", r}).Scan(ret)
+	err := c.Do(&RawRequest{"BatchWriteItem", struct {
+		RequestItems map[string][]WriteRequest
+		*BatchWriteItemOption
+	}{
+		items,
+		bopt,
+	}}).Scan(ret)
 	return ret, err
 }
 
-func (c *Client) CreateTable(r *CreateTableRequest) (*CreateTableResult, error) {
+func (c *Client) CreateTable(t *Table, topt *TableOption) (*CreateTableResult, error) {
 	ret := &CreateTableResult{}
-	err := c.Do(&Request{"CreateTable", r}).Scan(ret)
+	err := c.Do(&RawRequest{"CreateTable", struct {
+		*Table
+		*TableOption
+	}{
+		t,
+		topt,
+	}}).Scan(ret)
 	return ret, err
 }
 
-func (c *Client) DeleteItem(r *DeleteItemRequest) (*DeleteItemResult, error) {
+func (c *Client) DeleteItem(table string, key map[string]AttributeValue, dopt *DeleteItemOption) (*DeleteItemResult, error) {
 	ret := &DeleteItemResult{}
-	err := c.Do(&Request{"DeleteItem", r}).Scan(ret)
+	err := c.Do(&RawRequest{"DeleteItem", struct {
+		TableName string
+		Key       map[string]AttributeValue
+		*DeleteItemOption
+	}{
+		table,
+		key,
+		dopt,
+	}}).Scan(ret)
 	return ret, err
 }
 
-func (c *Client) DeleteTable(r *DeleteTableRequest) (*DeleteTableResult, error) {
+func (c *Client) DeleteTable(table string) (*DeleteTableResult, error) {
 	ret := &DeleteTableResult{}
-	err := c.Do(&Request{"DeleteTable", r}).Scan(ret)
+	err := c.Do(&RawRequest{"DeleteTable", struct {
+		TableName string
+	}{
+		table,
+	}}).Scan(ret)
 	return ret, err
 }
 
-func (c *Client) DescribeTable(r *DescribeTableRequest) (*DescribeTableResult, error) {
+func (c *Client) DescribeTable(table string) (*DescribeTableResult, error) {
 	ret := &DescribeTableResult{}
-	err := c.Do(&Request{"DescribeTable", r}).Scan(ret)
+	err := c.Do(&RawRequest{"DescribeTable", struct {
+		TableName string
+	}{
+		table,
+	}}).Scan(ret)
 	return ret, err
 }
 
-func (c *Client) GetItem(r *GetItemRequest) (*GetItemResult, error) {
+func (c *Client) GetItem(table string, key map[string]AttributeValue, gopt *GetItemOption) (*GetItemResult, error) {
 	ret := &GetItemResult{}
-	err := c.Do(&Request{"GetItem", r}).Scan(ret)
+	err := c.Do(&RawRequest{"GetItem", struct {
+		TableName string
+		Key       map[string]AttributeValue
+		*GetItemOption
+	}{
+		table,
+		key,
+		gopt,
+	}}).Scan(ret)
 	return ret, err
 }
 
-func (c *Client) ListTables(r *ListTablesRequest) (*ListTablesResult, error) {
-	// TODO(nabeken): Add paging support
+func (c *Client) ListTables(lopt *ListTablesOption) (*ListTablesResult, error) {
 	ret := &ListTablesResult{}
-	err := c.Do(&Request{"ListTables", r}).Scan(ret)
+	err := c.Do(&RawRequest{"ListTables", struct {
+		*ListTablesOption
+	}{
+		lopt,
+	}}).Scan(ret)
 	return ret, err
 }
 
-func (c *Client) PutItem(r *PutItemRequest) (*PutItemResult, error) {
+func (c *Client) PutItem(table string, item Item, popt *PutItemOption) (*PutItemResult, error) {
 	ret := &PutItemResult{}
-	err := c.Do(&Request{"PutItem", r}).Scan(ret)
+	err := c.Do(&RawRequest{"PutItem", struct {
+		TableName string
+		Item      Item
+		*PutItemOption
+	}{
+		table,
+		item,
+		popt,
+	}}).Scan(ret)
 	return ret, err
 }
 
-func (c *Client) Query(r *QueryRequest) (*QueryResult, error) {
+func (c *Client) Query(table string, conditions *KeyConditions, qopt *QueryOption) (*QueryResult, error) {
 	ret := &QueryResult{}
-	err := c.Do(&Request{"Query", r}).Scan(ret)
+	err := c.Do(&RawRequest{"Query", struct {
+		TableName     string
+		KeyConditions *KeyConditions
+		*QueryOption
+	}{
+		table,
+		conditions,
+		qopt,
+	}}).Scan(ret)
 	return ret, err
 }
 
-func (c *Client) Scan(r *ScanRequest) (*ScanResult, error) {
-	// TODO(nabeken): Add paging support
+func (c *Client) Scan(table string, sopt *ScanOption) (*ScanResult, error) {
 	ret := &ScanResult{}
-	err := c.Do(&Request{"Scan", r}).Scan(ret)
+	err := c.Do(&RawRequest{"Scan", struct {
+		TableName string
+		*ScanOption
+	}{
+		table,
+		sopt,
+	}}).Scan(ret)
 	return ret, err
 }
 
-func (c *Client) UpdateItem(r *UpdateItemRequest) (*UpdateItemResult, error) {
+func (c *Client) UpdateItem(table string, key map[string]AttributeValue, uopt *UpdateItemOption) (*UpdateItemResult, error) {
 	ret := &UpdateItemResult{}
-	err := c.Do(&Request{"UpdateItem", r}).Scan(ret)
+	err := c.Do(&RawRequest{"UpdateItem", struct {
+		TableName string
+		Key       map[string]AttributeValue
+		*UpdateItemOption
+	}{
+		table,
+		key,
+		uopt,
+	}}).Scan(ret)
 	return ret, err
 }
 
-func (c *Client) UpdateTable(r *UpdateTableRequest) (*UpdateTableResult, error) {
+func (c *Client) UpdateTable(table string, uopt *UpdateTableOption) (*UpdateTableResult, error) {
 	ret := &UpdateTableResult{}
-	err := c.Do(&Request{"UpdateTable", r}).Scan(ret)
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
+	err := c.Do(&RawRequest{"UpdateTable", struct {
+		TableName string
+		*UpdateTableOption
+	}{
+		table,
+		uopt,
+	}}).Scan(ret)
+	return ret, err
 }
 
-func (c *Client) Do(req *Request) *response {
+func (c *Client) Do(req *RawRequest) *Response {
 	j, jerr := json.Marshal(req.Param)
 	if jerr != nil {
-		return &response{nil, jerr}
+		return &Response{jerr, nil}
 	}
 	hreq, err := http.NewRequest("POST", c.Region.DynamoDBEndpoint+"/", bytes.NewReader(j))
 	if err != nil {
-		return &response{nil, err}
+		return &Response{err, nil}
 	}
 
 	hreq.Header.Set("Content-Type", "application/x-amz-json-1.0")
@@ -128,34 +223,35 @@ func (c *Client) Do(req *Request) *response {
 			if shouldRetry(err) {
 				continue
 			}
-			return &response{nil, err}
+			return &Response{err, nil}
 		}
 
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return &response{nil, ErrFailedtoReadResponse}
+			return &Response{ErrFailedtoReadResponse, nil}
 		}
 		if resp.StatusCode != 200 {
 			err = NewError(resp, body)
 			if shouldRetry(err) {
 				continue
 			}
-			return &response{nil, err}
+			return &Response{err, nil}
 		}
-		return &response{body, nil}
+		return &Response{nil, body}
 	}
-	return &response{nil, err}
+	return &Response{err, nil}
 }
 
-type response struct {
+type Response struct {
+	Error error
+
 	json []byte
-	err  error
 }
 
-func (r *response) Scan(result interface{}) error {
-	if r.err != nil {
-		return r.err
+func (r *Response) Scan(result interface{}) error {
+	if r.Error != nil {
+		return r.Error
 	}
 	jerr := json.Unmarshal(r.json, result)
 	if jerr != nil {
