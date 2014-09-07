@@ -28,7 +28,7 @@ type (
 	KeyConditions map[string]Condition
 )
 
-type ExpectedAttributeValue map[string]DeprecatedCondition
+type ExpectedAttributeValue map[string]Condition
 
 const (
 	KeyTypeHash  KeyType = "HASH"
@@ -235,8 +235,8 @@ type Capacity struct {
 }
 
 type Condition struct {
-	AttributeValueList []AttributeValue `json:",omitempty"`
 	ComparisonOperator ComparisonOperator
+	AttributeValueList []AttributeValue `json:",omitempty"`
 }
 
 type ConsumedCapacity struct {
@@ -245,33 +245,6 @@ type ConsumedCapacity struct {
 	LocalSecondaryIndexes  map[string]Capacity `json:",omitempty"`
 	Table                  Capacity            `json:",omitempty"`
 	TableName              string
-}
-
-// TODO: Dynalite is missing new Condition parameter as of writing
-type DeprecatedCondition struct {
-	Value  AttributeValue `json:",omitempty"`
-	Exists bool           `json:",omitempty"`
-}
-
-func (c DeprecatedCondition) MarshalJSON() ([]byte, error) {
-	if !c.Exists {
-		return json.Marshal(
-			struct {
-				Exists bool
-			}{
-				Exists: c.Exists,
-			},
-		)
-	}
-	return json.Marshal(
-		struct {
-			Value  AttributeValue
-			Exists bool
-		}{
-			Value:  c.Value,
-			Exists: c.Exists,
-		},
-	)
 }
 
 type UpdateItemResult struct {

@@ -248,13 +248,13 @@ func TestDeleteItemOption(t *testing.T) {
   "ConditionalOperator": "OR",
   "Expected": {
     "DELETE_ITEM_REQUEST_KEY": {
-      "Value": {
-          "S": "STRING"
-      },
-      "Exists": true
+      "ComparisonOperator": "EQ",
+	  "AttributeValueList": [
+		{"S": "STRING"}
+      ]
     },
     "DELETE_ITEM_REQUEST_KEY2": {
-      "Exists": false
+      "ComparisonOperator": "NULL"
     }
   },
   "ReturnConsumedCapacity": "TOTAL",
@@ -264,13 +264,15 @@ func TestDeleteItemOption(t *testing.T) {
 `)
 	q := dynamodb.DeleteItemOption{
 		ConditionalOperator: dynamodb.CondOpOr,
-		Expected: map[string]dynamodb.DeprecatedCondition{
-			"DELETE_ITEM_REQUEST_KEY": dynamodb.DeprecatedCondition{
-				Value:  dynamodb.NewString("STRING"),
-				Exists: true,
+		Expected: dynamodb.ExpectedAttributeValue{
+			"DELETE_ITEM_REQUEST_KEY": dynamodb.Condition{
+				ComparisonOperator: dynamodb.CmpOpEQ,
+				AttributeValueList: []dynamodb.AttributeValue{
+					dynamodb.NewString("STRING"),
+				},
 			},
-			"DELETE_ITEM_REQUEST_KEY2": dynamodb.DeprecatedCondition{
-				Exists: false,
+			"DELETE_ITEM_REQUEST_KEY2": dynamodb.Condition{
+				ComparisonOperator: dynamodb.CmpOpNull,
 			},
 		},
 		ReturnConsumedCapacity:      dynamodb.ConsumedCapTotal,
@@ -331,13 +333,13 @@ func TestPutItemOption(t *testing.T) {
   "ConditionalOperator": "OR",
   "Expected": {
     "PUT_ITEM_REQUEST_KEY": {
-      "Value": {
-          "S": "STRING"
-      },
-      "Exists": true
+      "ComparisonOperator": "EQ",
+      "AttributeValueList": [
+		{"S": "STRING"}
+      ]
     },
     "PUT_ITEM_REQUEST_KEY2": {
-      "Exists": false
+      "ComparisonOperator": "NULL"
     }
   },
   "ReturnConsumedCapacity": "TOTAL",
@@ -347,13 +349,15 @@ func TestPutItemOption(t *testing.T) {
 `)
 	q := dynamodb.PutItemOption{
 		ConditionalOperator: dynamodb.CondOpOr,
-		Expected: map[string]dynamodb.DeprecatedCondition{
-			"PUT_ITEM_REQUEST_KEY": dynamodb.DeprecatedCondition{
-				Value:  dynamodb.NewString("STRING"),
-				Exists: true,
+		Expected: dynamodb.ExpectedAttributeValue{
+			"PUT_ITEM_REQUEST_KEY": dynamodb.Condition{
+				ComparisonOperator: dynamodb.CmpOpEQ,
+				AttributeValueList: []dynamodb.AttributeValue{
+					dynamodb.NewString("STRING"),
+				},
 			},
-			"PUT_ITEM_REQUEST_KEY2": dynamodb.DeprecatedCondition{
-				Exists: false,
+			"PUT_ITEM_REQUEST_KEY2": dynamodb.Condition{
+				ComparisonOperator: dynamodb.CmpOpNull,
 			},
 		},
 		ReturnConsumedCapacity:      dynamodb.ConsumedCapTotal,
@@ -506,16 +510,13 @@ func TestUpdateItemOption(t *testing.T) {
   "ConditionalOperator": "OR",
   "Expected": {
     "UPDATE_ITEM_REQUEST_KEY2": {
-      "Exists": false
+      "ComparisonOperator": "NULL"
     },
     "UPDATE_ITEM_REQUEST_KEY": {
-      "Value": {
-          "SS": [
-            "STRING1",
-            "STRING2"
-          ]
-       },
-      "Exists": true
+      "ComparisonOperator": "EQ",
+      "AttributeValueList": [
+		{"SS": ["STRING1", "STRING2"]}
+      ]
     }
   },
   "ReturnConsumedCapacity": "TOTAL",
@@ -537,16 +538,15 @@ func TestUpdateItemOption(t *testing.T) {
 			},
 		},
 		ConditionalOperator: dynamodb.CondOpOr,
-		Expected: map[string]dynamodb.DeprecatedCondition{
-			"UPDATE_ITEM_REQUEST_KEY": dynamodb.DeprecatedCondition{
-				Value: dynamodb.AttributeValue{
-					Type: dynamodb.TypeStringSet,
-					Data: []dynamodb.AttributeData{"STRING1", "STRING2"},
+		Expected: dynamodb.ExpectedAttributeValue{
+			"UPDATE_ITEM_REQUEST_KEY": dynamodb.Condition{
+				ComparisonOperator: dynamodb.CmpOpEQ,
+				AttributeValueList: []dynamodb.AttributeValue{
+					dynamodb.NewStringSet("STRING1", "STRING2"),
 				},
-				Exists: true,
 			},
-			"UPDATE_ITEM_REQUEST_KEY2": dynamodb.DeprecatedCondition{
-				Exists: false,
+			"UPDATE_ITEM_REQUEST_KEY2": dynamodb.Condition{
+				ComparisonOperator: dynamodb.CmpOpNull,
 			},
 		},
 		ReturnConsumedCapacity:      dynamodb.ConsumedCapTotal,
