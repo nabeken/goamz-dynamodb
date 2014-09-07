@@ -32,7 +32,7 @@ type ClientTestSuite struct {
 	suite.Suite
 	DynamoDBCommonSuite
 
-	items map[string]dynamodb.AttributeValue
+	items dynamodb.Item
 }
 
 func (s *ClientTestSuite) SetupSuite() {
@@ -68,7 +68,7 @@ func (s *ClientTestSuite) TestListTables() {
 	if err != nil {
 		s.T().Fatal(err)
 	}
-	s.Equal(len(ret.TableNames), 1)
+	s.Len(ret.TableNames, 1)
 	s.True(findTableByName(ret.TableNames, s.Table.Name))
 }
 
@@ -78,8 +78,8 @@ func (s *ClientTestSuite) TestGetItem() {
 	if err != nil {
 		s.T().Fatal(err)
 	}
-	s.Equal(ret.Item["TestHashKey"].Data[0], "HashKeyVal")
-	s.Equal(ret.Item["TestRangeKey"].Data[0], "1")
+	s.Equal("HashKeyVal", ret.Item["TestHashKey"].Data[0])
+	s.Equal("1", ret.Item["TestRangeKey"].Data[0])
 }
 
 func (s *ClientTestSuite) TestPutUpdateItem() {
@@ -106,9 +106,9 @@ func (s *ClientTestSuite) TestPutUpdateItem() {
 	if err != nil {
 		s.T().Fatal(err)
 	}
-	s.Equal(ret.Item["TestHashKey"].Data[0], "HashKeyVal")
-	s.Equal(ret.Item["TestRangeKey"].Data[0], "1")
-	s.Equal(ret.Item["ATTR"].Data[0], "2")
+	s.Equal("HashKeyVal", ret.Item["TestHashKey"].Data[0])
+	s.Equal("1", ret.Item["TestRangeKey"].Data[0])
+	s.Equal("2", ret.Item["ATTR"].Data[0])
 }
 
 type ClientGSITestSuite struct {
@@ -161,7 +161,7 @@ func (s *ClientGSITestSuite) TestDescribeTable() {
 	if !s.NoError(err) {
 		s.T().FailNow()
 	}
-	s.Equal(len(td.Table.GlobalSecondaryIndexes), 1)
+	s.Len(td.Table.GlobalSecondaryIndexes, 1)
 	s.Equal("IMSIIndex", td.Table.GlobalSecondaryIndexes[0].IndexName)
 }
 
@@ -265,7 +265,7 @@ func (s *ScanTestSuite) TestScan() {
 	if !s.NoError(err) {
 		s.T().FailNow()
 	}
-	s.Equal(ret.Count, s.numOfRecords)
+	s.Equal(s.numOfRecords, ret.Count)
 }
 
 func (s *ScanTestSuite) TestScanFilter() {
@@ -286,7 +286,7 @@ func (s *ScanTestSuite) TestScanFilter() {
 	if !s.NoError(err) {
 		s.T().FailNow()
 	}
-	s.Equal(ret.Count, 50)
+	s.Equal(50, ret.Count)
 	for i := range ret.Items {
 		ia, err := strconv.Atoi(string(ret.Items[i]["TestRangeKey"].Data[0]))
 		s.NoError(err)
@@ -552,7 +552,7 @@ func (s *BatchTestSuite) TestBatchGetItem() {
 	if !s.NoError(err) {
 		s.T().FailNow()
 	}
-	s.Equal(len(ret.Responses["DynamoDBTestBatch"]), 3)
+	s.Len(ret.Responses["DynamoDBTestBatch"], 3)
 	for i := range ret.Responses["DynamoDBTest"] {
 		ia, err := strconv.Atoi(string(ret.Responses["DynamoDBTestBatch"][i]["TestRangeKey"].Data[0]))
 		s.NoError(err)
@@ -584,7 +584,7 @@ func (s *BatchTestSuite) TestBatchWrite() {
 	}
 
 	// No unprocessed item
-	s.Equal(0, len(ret.UnprocessedItems[s.Table.Name]))
+	s.Len(ret.UnprocessedItems[s.Table.Name], 0)
 
 	sret, serr := s.c.Scan(s.Table.Name, nil)
 	if !s.NoError(serr) {
