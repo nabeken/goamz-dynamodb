@@ -55,8 +55,7 @@ type GetItemOption struct {
 }
 
 type PutItemOption struct {
-	ConditionalOperator ConditionalOperator `json:",omitempty"`
-	//Expected                    map[string]Condition `json:",omitempty"`
+	ConditionalOperator         ConditionalOperator         `json:",omitempty"`
 	Expected                    ExpectedAttributeValue      `json:",omitempty"`
 	ReturnConsumedCapacity      ReturnConsumedCapacity      `json:",omitempty"`
 	ReturnItemCollectionMetrics ReturnItemCollectionMetrics `json:",omitempty"`
